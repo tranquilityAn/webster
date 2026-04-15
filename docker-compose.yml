@@ -1,0 +1,14 @@
+services:
+  frontend:
+    container_name: webster-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:6767/webster/v1
+    restart: always
