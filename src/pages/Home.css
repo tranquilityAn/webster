@@ -1,0 +1,22 @@
+.home-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  padding: 0 20px;
+}
+
+.home-page h1 {
+  font-size: 2.5rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 5px;
+}
+
+.home-page p {
+  font-size: 1.1rem;
+  color: #A0A0A0;
+  font-weight: 300;
+}

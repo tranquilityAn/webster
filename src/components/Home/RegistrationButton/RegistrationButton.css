@@ -1,0 +1,46 @@
+.registration-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 30px;
+  width: 100%;
+}
+
+.registration-btn {
+  padding: 14px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  background-color: #EDE986; /* Contract color user requested */
+  color: #1E1E1E; /* Main color for button text */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.registration-btn:hover {
+  background-color: #f6f3b0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(237, 233, 134, 0.15);
+}
+
+.registration-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.status-message {
+  padding: 12px 20px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05); /* Minimalist ghost container */
+  color: #EDE986;
+  font-size: 14px;
+  font-family: monospace;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}

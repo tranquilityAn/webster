@@ -1,0 +1,72 @@
+.main-header {
+  width: 100%;
+  height: 70px;
+  background-color: #1A1A1A;
+  border-bottom: 1px solid #333333;
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.header-container {
+  width: 100%;
+  padding: 0 30px;
+  /* Small padding from screen edges */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.logo-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  height: 80%;
+}
+
+.header-logo {
+  height: 90%;
+  /* Significantly increased to match header height */
+  width: auto;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-name {
+  color: #F5F5F5;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #2A2A2A;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #EDE986;
+  /* Minimal contrast ring */
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  color: #EDE986;
+  font-weight: 600;
+  font-size: 1.1rem;
+}

@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    watch: {
+      usePolling: true,
+    },
+    proxy: {
+      '/webster': 'http://host.docker.internal:6767',
+    }
+  }
 })
