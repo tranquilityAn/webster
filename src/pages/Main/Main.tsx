@@ -19,6 +19,10 @@ export default function Main() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/login');
@@ -43,6 +47,42 @@ export default function Main() {
       console.error('Failed to fetch projects:', error);
     } finally {
       setLoadingProjects(false);
+    }
+  };
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+
+    setIsCreating(true);
+    try {
+      const res = await fetch('/webster/v1/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: {
+            type: 'project',
+            attributes: {
+              name: newProjectName.trim(),
+            },
+          },
+        }),
+      });
+
+      if (res.ok) {
+        setNewProjectName('');
+        setShowCreateModal(false);
+        fetchProjects();
+      } else {
+        const errData = await res.json();
+        console.error('Failed to create project:', errData);
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -91,7 +131,12 @@ export default function Main() {
       <section className="main-content">
         <div className="content-header">
           <h2>Your Projects</h2>
-          <button className="create-project-btn">+ New Project</button>
+          <button 
+            className="create-project-btn"
+            onClick={() => setShowCreateModal(true)}
+          >
+            + New Project
+          </button>
         </div>
 
         {loadingProjects ? (
@@ -113,6 +158,53 @@ export default function Main() {
           </div>
         )}
       </section>
+
+      {/* Create Project */}
+      {showCreateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Create New Project</h2>
+              <button className="close-btn" onClick={() => {
+                setShowCreateModal(false);
+                setNewProjectName('');
+              }}>&times;</button>
+            </div>
+            <form onSubmit={handleCreateProject}>
+              <div className="form-group">
+                <label htmlFor="projectName">Project Name</label>
+                <input
+                  id="projectName"
+                  type="text"
+                  placeholder="Enter project name..."
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="cancel-btn"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setNewProjectName('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="submit-btn"
+                  disabled={isCreating || !newProjectName.trim()}
+                >
+                  {isCreating ? 'Creating...' : 'Create Project'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
