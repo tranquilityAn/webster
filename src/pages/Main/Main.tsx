@@ -22,6 +22,7 @@ export default function Main() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isOpeningEditor, setIsOpeningEditor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -83,6 +84,48 @@ export default function Main() {
       console.error('Error creating project:', error);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleOpenEditor = async (projectId: string) => {
+    setIsOpeningEditor(projectId);
+    try {
+      // 1. Try to get existing canvases for this project
+      const listRes = await fetch(`/webster/v1/canvases?project_id=${projectId}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (listData.data && listData.data.length > 0) {
+          // Navigate to the first available canvas
+          navigate(`/editor/${listData.data[0].id}`);
+          return;
+        }
+      }
+
+      // 2. If no canvas exists, create a default one
+      const createRes = await fetch('/webster/v1/canvases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            type: 'canva',
+            attributes: {
+              project_id: projectId,
+              name: 'Main Canvas'
+            }
+          }
+        })
+      });
+
+      if (createRes.ok) {
+        const createData = await createRes.json();
+        navigate(`/editor/${createData.data.id}`);
+      } else {
+        console.error('Failed to create default canvas');
+      }
+    } catch (error) {
+      console.error('Error opening editor:', error);
+    } finally {
+      setIsOpeningEditor(null);
     }
   };
 
@@ -148,11 +191,28 @@ export default function Main() {
         ) : (
           <div className="projects-grid">
             {projects.map((project) => (
-              <div key={project.id} className="project-card">
-                <h3>{project.attributes.name}</h3>
-                <p className="project-date">
-                  Created: {new Date(project.attributes.created_at).toLocaleDateString()}
-                </p>
+              <div key={project.id} className="project-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1 }}>
+                  <h3>{project.attributes.name}</h3>
+                  <p className="project-date">
+                    Created: {new Date(project.attributes.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => handleOpenEditor(project.id)}
+                  disabled={isOpeningEditor === project.id}
+                  style={{
+                    marginTop: '15px',
+                    padding: '8px',
+                    backgroundColor: isOpeningEditor === project.id ? '#666' : '#4A90D9',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isOpeningEditor === project.id ? 'default' : 'pointer'
+                  }}
+                >
+                  {isOpeningEditor === project.id ? 'Opening...' : 'Open Editor Stub'}
+                </button>
               </div>
             ))}
           </div>

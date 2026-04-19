@@ -5,6 +5,7 @@ import Register from './pages/Register/Register';
 import Login from './pages/Login/Login';
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail';
 import Main from './pages/Main/Main';
+import Editor from './pages/Editor/Editor';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/editor/:id" element={<Editor />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
