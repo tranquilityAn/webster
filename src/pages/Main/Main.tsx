@@ -73,6 +73,26 @@ export default function Main() {
       });
 
       if (res.ok) {
+        const data = await res.json();
+        const projectId = data.data.id;
+        
+        // Automatically create a default canvas for the new project
+        await fetch('/webster/v1/canvases', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            data: {
+              type: 'canva',
+              attributes: {
+                project_id: projectId,
+                name: 'Main Canvas',
+              },
+            },
+          }),
+        });
+
         setNewProjectName('');
         setShowCreateModal(false);
         fetchProjects();
