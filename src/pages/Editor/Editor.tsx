@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Stage } from 'react-konva';
+import { Stage, Layer, Transformer } from 'react-konva';
 import { useCanvasStore } from '../../store/useCanvasStore';
 import { getComputedCanvasState } from '../../utils/canvasUtils';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import './Editor.css';
 
@@ -79,6 +79,26 @@ const IconGroup = () => (
   </svg>
 );
 
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconEye = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconEyeOff = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 011.58-2.61M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // ─── Tool definitions ──────────────────────────────────────────────────────────
 
 const TOOLS = [
@@ -97,16 +117,145 @@ export default function Editor() {
   const { isConnected, snapshot, commits, error, connect, disconnect, sendCommit } = useCanvasStore();
 
   const [activeTool, setActiveTool] = useState('select');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+  const [zoom, setZoom] = useState<number>(0.5);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
 
-  // Compute the live canvas tree by applying commits to the snapshot
+  const stageRef = useRef<any>(null);
+  const trRef = useRef<any>(null);
+  const canvasAreaRef = useRef<HTMLElement>(null);
+  const isPanningRef = useRef(false);
+  const startPanRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  // localPositions stores optimistic overrides for node positions during/after drag.
+  // Using a ref (not state) means updating it does NOT trigger a React re-render,
+  // which is exactly what we want: Konva already moved the shape visually,
+  // we just need to make sure the next computedState rebuild doesn't reset it.
+  const localPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
+
+  // Recompute the base canvas tree from snapshot + server commits
   const computedState = useMemo(() => {
     return getComputedCanvasState(snapshot, commits);
   }, [snapshot, commits]);
+
+  // Apply local position overrides on top of the server state.
+  // This produces the final tree that Konva renders, with any in-flight
+  // drag positions applied so shapes don't jump back on commit:ack.
+  const displayState = useMemo(() => {
+    if (!computedState || localPositions.current.size === 0) return computedState;
+
+    // Deep-clone only the parts we need to mutate (children attrs)
+    const patchLayer = (layer: any): any => {
+      if (!layer.children) return layer;
+      return {
+        ...layer,
+        children: layer.children.map((child: any) => {
+          const override = child.attrs?.id ? localPositions.current.get(child.attrs.id) : undefined;
+          if (!override) return child;
+          return {
+            ...child,
+            attrs: { ...child.attrs, ...override },
+          };
+        }),
+      };
+    };
+
+    return {
+      ...computedState,
+      children: computedState.children?.map((child: any) =>
+        child.className === 'Layer' ? patchLayer(child) : child
+      ),
+    };
+  }, [computedState]);
+
+  // Attach Transformer only when in Select mode AND something is selected.
+  // Switching to another tool immediately hides resize handles.
+  useEffect(() => {
+    if (!trRef.current) return;
+
+    // Only show Transformer in Select mode with a valid selection
+    if (!selectedId || !stageRef.current || activeTool !== 'select') {
+      trRef.current.nodes([]);
+      trRef.current.getLayer()?.batchDraw();
+      return;
+    }
+
+    const node = stageRef.current.findOne(`#${selectedId}`);
+    if (node && node.getType() !== 'Layer') {
+      trRef.current.nodes([node]);
+    } else {
+      trRef.current.nodes([]);
+    }
+    trRef.current.getLayer()?.batchDraw();
+  }, [selectedId, displayState, activeTool]);
 
   useEffect(() => {
     if (id) connect(id);
     return () => { disconnect(); };
   }, [id, connect, disconnect]);
+
+  // Handle Ctrl+Scroll to zoom
+  useEffect(() => {
+    const area = canvasAreaRef.current;
+    if (!area) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setZoom(z => {
+          // Adjust zoom multiplier for a smooth feel
+          const newZoom = z - e.deltaY * 0.002;
+          return Math.min(Math.max(0.1, newZoom), 5); // clamp between 10% and 500%
+        });
+      }
+    };
+
+    // passive: false is required to prevent default zooming behavior in browser
+    area.addEventListener('wheel', handleWheel, { passive: false });
+    return () => area.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Handle panning the canvas visually
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isPanningRef.current) return;
+      setPan({
+        x: startPanRef.current.panX + (e.clientX - startPanRef.current.x),
+        y: startPanRef.current.panY + (e.clientY - startPanRef.current.y),
+      });
+    };
+
+    const handlePointerUp = () => {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        document.body.style.cursor = 'default';
+      }
+    };
+
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, []);
+
+  const handleStartPanning = (clientX: number, clientY: number) => {
+    isPanningRef.current = true;
+    startPanRef.current = {
+      x: clientX,
+      y: clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+    document.body.style.cursor = 'grabbing';
+  };
+
+  const activeToolRef = useRef(activeTool);
+  useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
 
   // Helper to get icon based on className
   const getIconForType = (type: string) => {
@@ -127,14 +276,15 @@ export default function Editor() {
     const elements: { id: string; name: string; type: string; depth: number; index: number }[] = [];
     
     // We only care about children of the first Layer (as user requested)
-    const mainLayer = computedState.children?.find(c => c.className === 'Layer');
+    const mainLayer = computedState.children?.find((c: any) => c.className === 'Layer');
     if (!mainLayer) return [];
 
     mainLayer.children?.forEach((child: any, index: number) => {
       elements.push({
         id: child.attrs?.id ?? Math.random().toString(),
-        name: child.attrs?.id || child.className,
+        name: child.attrs?.name || child.attrs?.id || child.className,
         type: child.className,
+        visible: child.attrs?.visible !== false,
         depth: 0,
         index // This is the local index within the parent layer
       });
@@ -149,7 +299,7 @@ export default function Editor() {
 
   // Derive layers (top-level only) for commit targeting
   const rootLayers = useMemo(() => {
-    return computedState?.children?.filter(c => c.className === 'Layer') || [];
+    return computedState?.children?.filter((c: any) => c.className === 'Layer') || [];
   }, [computedState]);
 
   const handleDragEnd = useCallback((result: DropResult) => {
@@ -180,24 +330,107 @@ export default function Editor() {
     }]);
   }, [allElements, sendCommit]);
 
+  const handleNodeChange = useCallback((nodeId: string, newProps: any) => {
+    // Store the optimistic position so we can keep showing it while the
+    // commit round-trips to the server. It will be cleaned up once the
+    // server's commit:ack causes computedState to update with the real value.
+    if (newProps.x !== undefined || newProps.y !== undefined) {
+      localPositions.current.set(nodeId, {
+        x: newProps.x ?? 0,
+        y: newProps.y ?? 0,
+      });
+    }
+    sendCommit([{
+      op: 'update',
+      id: nodeId,
+      props: newProps,
+    }]);
+    // After the new commit is processed and displayState includes the new coords,
+    // the override is no longer needed. We clean it up on the next render cycle.
+    // Using a timeout ensures the new computedState has already been calculated.
+    setTimeout(() => {
+      localPositions.current.delete(nodeId);
+    }, 500);
+  }, [sendCommit]);
+
+  const handleDelete = useCallback((nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    sendCommit([{
+      op: 'delete',
+      id: nodeId
+    }]);
+    if (selectedId === nodeId) {
+      setSelectedId(null);
+    }
+  }, [sendCommit, selectedId]);
+
+  const handleStartRename = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditingValue(currentName);
+  };
+
+  const handleSaveRename = () => {
+    if (editingId && editingValue.trim()) {
+      sendCommit([{
+        op: 'update',
+        id: editingId,
+        props: { name: editingValue.trim() }
+      }]);
+    }
+    setEditingId(null);
+    setEditingValue('');
+  };
+
+  const handleToggleVisibility = (id: string, currentVisible: boolean) => {
+    sendCommit([{
+      op: 'update',
+      id: id,
+      props: { visible: !currentVisible }
+    }]);
+  };
+
   // Send a minimal test commit
   const handleTestCommit = () => {
-    const layerId = rootLayers[0]?.attrs?.id ?? 'layer-1';
-    sendCommit([{
+    let layerId = rootLayers[0]?.attrs?.id;
+    const ops: any[] = [];
+    
+    if (!layerId) {
+      layerId = `layer-${Date.now()}`;
+      ops.push({
+        op: 'add_layer',
+        layer: {
+          className: 'Layer',
+          attrs: { id: layerId },
+          children: []
+        }
+      });
+    }
+    
+    // Get canvas dimensions
+    const canvasWidth = computedState?.attrs?.width || 1280;
+    const canvasHeight = computedState?.attrs?.height || 720;
+    
+    // Position near center with some random jitter
+    const x = Math.floor(canvasWidth / 2 - 40 + (Math.random() * 60 - 30));
+    const y = Math.floor(canvasHeight / 2 - 40 + (Math.random() * 60 - 30));
+
+    ops.push({
       op: 'add',
       parentId: layerId,
       node: {
         className: 'Rect',
         attrs: {
           id: `rect-${Date.now()}`,
-          x: Math.floor(Math.random() * 400) + 50,
-          y: Math.floor(Math.random() * 250) + 50,
+          x,
+          y,
           width: 80,
           height: 80,
           fill: `hsl(${Math.floor(Math.random() * 360)},60%,55%)`,
         },
       },
-    }]);
+    });
+
+    sendCommit(ops);
   };
 
   return (
@@ -222,9 +455,11 @@ export default function Editor() {
         </div>
 
         <div className="editor-topbar-right">
-          <button className="topbar-btn" title="Zoom out">−</button>
-          <span className="topbar-canvas-name" style={{ minWidth: 36, textAlign: 'center' }}>100%</span>
-          <button className="topbar-btn" title="Zoom in">+</button>
+          <button className="topbar-btn" title="Zoom out" onClick={() => setZoom(z => Math.max(0.1, z - 0.1))}>−</button>
+          <span className="topbar-canvas-name" style={{ minWidth: 42, textAlign: 'center' }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <button className="topbar-btn" title="Zoom in" onClick={() => setZoom(z => Math.min(5, z + 0.1))}>+</button>
           <div className="topbar-divider" />
           <button
             className="topbar-btn topbar-btn-accent"
@@ -261,44 +496,111 @@ export default function Editor() {
         </aside>
 
         {/* Canvas area */}
-        <main className="editor-canvas-area">
+        <main 
+          className="editor-canvas-area" 
+          ref={canvasAreaRef}
+        >
+          {/* 
+            Centering trick: outer div has the *scaled* pixel dimensions so that
+            flexbox (on .editor-canvas-area) can correctly center it.
+            The inner stage is rendered at full native resolution but CSS-scaled,
+            with transform-origin at top-left so it grows downward/rightward
+            inside the already-correctly-sized box.
+            overflow:hidden clips any rounding bleed.
+          */}
           <div
             className="editor-canvas-frame"
             style={{ 
-              width: computedState?.attrs?.width || 1280, 
-              height: computedState?.attrs?.height || 720,
-              // Scale down to fit the preview area if needed (temporary simple solution)
-              transform: 'scale(0.5)',
-              transformOrigin: 'center'
+              width: (computedState?.attrs?.width || 1280) * zoom, 
+              height: (computedState?.attrs?.height || 720) * zoom,
+              overflow: 'hidden',
+              flexShrink: 0,
+              transform: `translate(${pan.x}px, ${pan.y}px)`,
             }}
           >
-            {isConnected && computedState ? (
-              <Stage 
-                width={computedState.attrs?.width || 1280} 
-                height={computedState.attrs?.height || 720}
-              >
-                {computedState.children?.map((child, idx) => (
-                  <KonvaNode key={child.attrs?.id || `node-${idx}`} node={child} />
-                ))}
-              </Stage>
-            ) : (
-              <div style={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                color: '#999',
-                fontSize: 13,
-              }}>
-                <IconLayer />
-                <span>
-                  {!isConnected ? 'Connecting…' : 'Initialising canvas…'}
-                </span>
-              </div>
-            )}
+            <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', display: 'block' }}>
+              {isConnected && computedState ? (
+                <Stage 
+                  width={computedState.attrs?.width || 1280} 
+                  height={computedState.attrs?.height || 720}
+                  ref={stageRef}
+                  onMouseDown={(e: any) => {
+                    if (e.target === e.target.getStage()) {
+                      setSelectedId(null);
+                      handleStartPanning(e.evt.clientX, e.evt.clientY);
+                    }
+                  }}
+                  onClick={(e: any) => {
+                    if (e.target === e.target.getStage()) {
+                      setSelectedId(null);
+                    }
+                  }}
+                  onTap={(e: any) => {
+                    if (e.target === e.target.getStage()) {
+                      setSelectedId(null);
+                    }
+                  }}
+                >
+                  {displayState?.children?.map((child: any, idx: number) => (
+                    <KonvaNode 
+                      key={child.attrs?.id || `node-${idx}`} 
+                      node={child} 
+                      draggable={activeTool === 'select'}
+                      onSelect={(nodeId) => {
+                        if (activeTool === 'select') {
+                          setSelectedId(nodeId);
+                        }
+                      }}
+                      onChange={handleNodeChange}
+                    />
+                  ))}
+                  {/* Transformer lives in its own Layer.
+                      Do NOT set listening={false} on this Layer —
+                      anchors need mouse events to be drag-resizable. */}
+                  <Layer>
+                    <Transformer
+                      ref={trRef}
+                      rotateEnabled={false}
+                      keepRatio={false}
+                      boundBoxFunc={(_oldBox: any, newBox: any) => {
+                        if (newBox.width < 5) newBox.width = 5;
+                        if (newBox.height < 5) newBox.height = 5;
+                        return newBox;
+                      }}
+                      anchorSize={20}
+                      anchorCornerRadius={3}
+                      anchorStroke="#EDE986"
+                      anchorFill="#1A1A1A"
+                      anchorStrokeWidth={2}
+                      anchorStyleFunc={(anchor: any) => {
+                        anchor.hitStrokeWidth(16);
+                      }}
+                      borderStroke="#EDE986"
+                      borderStrokeWidth={1}
+                      borderDash={[6, 4]}
+                      padding={3}
+                    />
+                  </Layer>
+                </Stage>
+              ) : (
+                <div style={{
+                  width: computedState?.attrs?.width || 1280,
+                  height: computedState?.attrs?.height || 720,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  color: '#999',
+                  fontSize: 13,
+                }}>
+                  <IconLayer />
+                  <span>
+                    {!isConnected ? 'Connecting…' : 'Initialising canvas…'}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </main>
 
@@ -310,24 +612,58 @@ export default function Editor() {
             <div className="layers-list">
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="layers">
-                  {(provided) => (
+                  {(provided: any) => (
                     <div {...provided.droppableProps} ref={provided.innerRef}>
                       {allElements.length > 0 ? (
                         allElements.map((el, index) => (
                           <Draggable key={el.id} draggableId={el.id} index={index}>
-                            {(provided, snapshot) => (
+                            {(provided: any, snapshot: any) => (
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`layer-item ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                                className={`layer-item ${snapshot.isDragging ? 'is-dragging' : ''} ${selectedId === el.id ? 'active' : ''} ${!el.visible ? 'is-hidden' : ''}`}
+                                onClick={() => setSelectedId(el.id)}
+                                onDoubleClick={() => handleStartRename(el.id, el.name)}
                                 style={{ 
                                   ...provided.draggableProps.style,
                                   paddingLeft: 16 
                                 }}
                               >
-                                {getIconForType(el.type)}
-                                {el.name}
+                                <div className="layer-item-main">
+                                  <button 
+                                    className="layer-visibility-btn" 
+                                    onClick={(e) => { e.stopPropagation(); handleToggleVisibility(el.id, el.visible); }}
+                                    title={el.visible ? 'Hide layer' : 'Show layer'}
+                                  >
+                                    {el.visible ? <IconEye /> : <IconEyeOff />}
+                                  </button>
+                                  {getIconForType(el.type)}
+                                  {editingId === el.id ? (
+                                    <input
+                                      className="layer-item-input"
+                                      value={editingValue}
+                                      onChange={(e) => setEditingValue(e.target.value)}
+                                      onBlur={handleSaveRename}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveRename();
+                                        if (e.key === 'Escape') setEditingId(null);
+                                      }}
+                                      autoFocus
+                                      onClick={(e) => e.stopPropagation()}
+                                      onDoubleClick={(e) => e.stopPropagation()}
+                                    />
+                                  ) : (
+                                    <span className="layer-item-name">{el.name}</span>
+                                  )}
+                                </div>
+                                <button 
+                                  className="layer-delete-btn" 
+                                  onClick={(e) => handleDelete(el.id, e)}
+                                  title="Delete object"
+                                >
+                                  <IconTrash />
+                                </button>
                               </div>
                             )}
                           </Draggable>

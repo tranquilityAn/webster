@@ -2,10 +2,9 @@
 .editor-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 70px);
   overflow: hidden;
   background-color: #1A1A1A;
-  padding-top: 70px; /* reserve space for fixed header */
 }
 
 /* === Top Editor Bar === */
@@ -96,8 +95,13 @@
   flex-shrink: 0;
 }
 
-.status-dot.connected    { background-color: #2ecc71; }
-.status-dot.disconnected { background-color: #e74c3c; }
+.status-dot.connected {
+  background-color: #2ecc71;
+}
+
+.status-dot.disconnected {
+  background-color: #e74c3c;
+}
 
 /* === Main Body (canvas + panels) === */
 .editor-body {
@@ -227,6 +231,92 @@
   color: #EDE986;
 }
 
+.layer-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.layer-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-item-input {
+  background: #1a1a1a;
+  border: 1px solid #EDE986;
+  border-radius: 3px;
+  color: #F5F5F5;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 2px 4px;
+  width: 100%;
+  outline: none;
+  margin-top: -3px;
+  margin-bottom: -3px;
+}
+
+.layer-item.is-hidden .layer-item-main {
+  opacity: 0.4;
+}
+
+.layer-visibility-btn {
+  background: transparent;
+  border: none;
+  color: #666;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  margin-right: -4px;
+}
+
+.layer-visibility-btn:hover {
+  color: #EDE986;
+  background: rgba(237, 233, 134, 0.1);
+}
+
+.layer-visibility-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+.layer-delete-btn {
+  background: transparent;
+  border: none;
+  color: #666;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-item:hover .layer-delete-btn {
+  opacity: 1;
+}
+
+.layer-delete-btn:hover {
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.1);
+}
+
+.layer-delete-btn svg {
+  width: 14px;
+  height: 14px;
+  opacity: 1 !important;
+}
+
 .layer-item svg {
   width: 14px;
   height: 14px;
@@ -247,7 +337,7 @@
 
 .layer-item.is-dragging {
   background: #2a2a2a;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   opacity: 0.8;
   border-radius: 4px;
 }
@@ -293,6 +383,15 @@
 }
 
 /* === Scrollbar === */
-.layers-list::-webkit-scrollbar { width: 4px; }
-.layers-list::-webkit-scrollbar-track { background: transparent; }
-.layers-list::-webkit-scrollbar-thumb { background: #3A3A3A; border-radius: 2px; }
+.layers-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.layers-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.layers-list::-webkit-scrollbar-thumb {
+  background: #3A3A3A;
+  border-radius: 2px;
+}
