@@ -21,12 +21,6 @@ export const IconImage = () => (
   </svg>
 );
 
-export const IconCircle = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 export const IconText = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
     <polyline points="4 7 4 4 20 4 20 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -86,5 +80,31 @@ export const IconEyeOff = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 011.58-2.61M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
     <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+export const IconCircle = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const IconPolygon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2 L22 8.5 L22 15.5 L12 22 L2 15.5 L2 8.5 Z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const IconStar = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const IconShapes = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="8" height="8" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="17" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M13 21l4-7 4 7H13z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M3 21l3-5 3 5H3z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );

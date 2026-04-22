@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Stage, Layer, Transformer, Line } from 'react-konva';
+import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star } from 'react-konva';
 import { useCanvasStore } from '../../store/useCanvasStore';
-import { getComputedCanvasState } from '../../utils/canvasUtils';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
 import { LinePropertiesSection } from './components/LinePropertiesSection';
-import { TOOLS } from './Editor.constants';
+import { ShapePropertiesSection } from './components/ShapePropertiesSection';
+import { SHAPE_DEFS } from './Editor.constants';
+import type { ShapeType } from './Editor.constants';
 import { IconLayer } from './components/EditorIcons';
 import './Editor.css';
 
@@ -17,47 +18,47 @@ import { LayersPanel } from './components/LayersPanel';
 // Hooks
 import { useEditorNavigation } from './hooks/useEditorNavigation';
 import { useEditorDrawing } from './hooks/useEditorDrawing';
+import { useEditorShapeDrawing } from './hooks/useEditorShapeDrawing';
 import { useLayerActions } from './hooks/useLayerActions';
-
-// ─── Component ────────────────────────────────────────────────────────────────
+import { useEditorLayout } from './hooks/useEditorLayout';
+import { useEditorCanvasState } from './hooks/useEditorCanvasState';
+import { useEditorHotkeys } from './hooks/useEditorHotkeys';
 
 export default function Editor() {
   const { id } = useParams<{ id: string }>();
   const { isConnected, snapshot, commits, error, connect, disconnect, sendCommit } = useCanvasStore();
 
-  // 1. Navigation Hook (Zoom/Pan)
+  // 1. Navigation & Viewport
   const { zoom, pan, setZoom, startPanning, zoomIn, zoomOut } = useEditorNavigation();
+  const { canvasAreaRef } = useEditorHotkeys({ setZoom });
 
   // 2. Editor UI State
   const [activeTool, setActiveTool] = useState('select');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeShape, setActiveShape] = useState<ShapeType>('ellipse');
 
-  // 3. Right Panel Sizing
-  const [rightPanelWidth, setRightPanelWidth] = useState<number>(() => {
-    const saved = localStorage.getItem('webster_panel_width');
-    return saved ? parseInt(saved, 10) : 260;
-  });
-  const [layersHeight, setLayersHeight] = useState<number>(() => {
-    const saved = localStorage.getItem('webster_layers_height');
-    return saved ? parseInt(saved, 10) : 340;
-  });
-  const [isResizingWidth, setIsResizingWidth] = useState(false);
-  const [isResizingHeight, setIsResizingHeight] = useState(false);
+  // Properties State
+  const [shapeFill, setShapeFill] = useState('#4D96FF');
+  const [shapeStroke, setShapeStroke] = useState('#1A1A1A');
+  const [shapeStrokeWidth, setShapeStrokeWidth] = useState(2);
+  const [shapeOpacity, setShapeOpacity] = useState(1);
 
-  // 4. Refs
+  // 3. Layout & Panels
+  const { 
+    rightPanelWidth, layersHeight, 
+    isResizingWidth, isResizingHeight, 
+    setIsResizingWidth, setIsResizingHeight 
+  } = useEditorLayout();
+
+  // 4. Canvas Data & Optimistic State
+  const {
+    computedState, displayState, rootLayers,
+    selectedNode, handleNodeChange
+  } = useEditorCanvasState({ snapshot, commits, sendCommit, selectedId });
+
+  // 5. Refs
   const stageRef = useRef<any>(null);
   const trRef = useRef<any>(null);
-  const canvasAreaRef = useRef<HTMLElement>(null);
-  const localPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
-
-  // 5. Shared Canvas Handlers
-  const handleNodeChange = useCallback((nodeId: string, attrs: any) => {
-    if (attrs.x !== undefined || attrs.y !== undefined) {
-      localPositions.current.set(nodeId, { x: attrs.x ?? 0, y: attrs.y ?? 0 });
-    }
-    sendCommit([{ op: 'update', id: nodeId, props: attrs }]);
-    setTimeout(() => { localPositions.current.delete(nodeId); }, 500);
-  }, [sendCommit]);
 
   // 6. Drawing Hook
   const {
@@ -90,6 +91,72 @@ export default function Editor() {
     }
   });
 
+  // 6b. Shape Drawing Hook
+  const {
+    liveShapeAttrs,
+    handleShapeMouseDown,
+    handleShapeMouseMove,
+    handleShapeMouseUp,
+  } = useEditorShapeDrawing({
+    stageRef,
+    zoom,
+    onCommit: (shapeType, attrs) => {
+      const shapeDef = SHAPE_DEFS.find(s => s.type === shapeType)!;
+      const allNodes = computedState?.children?.flatMap((c: any) => c.children || []) || [];
+      const sameClass = allNodes.filter((n: any) => n.className === shapeDef.konvaClass);
+      const shapeName = `${shapeDef.label} ${sameClass.length + 1}`;
+      const newId = `${shapeType}-${Date.now()}`;
+
+      let extraAttrs: Record<string, unknown> = {};
+      if (shapeType === 'polygon') {
+        const cx = (attrs.x as number) + (attrs.width as number) / 2;
+        const cy = (attrs.y as number) + (attrs.height as number) / 2;
+        const radius = Math.min(attrs.width as number, attrs.height as number) / 2;
+        extraAttrs = { x: cx, y: cy, sides: 6, radius };
+        delete (attrs as any).width;
+        delete (attrs as any).height;
+      } else if (shapeType === 'star') {
+        const cx = (attrs.x as number) + (attrs.width as number) / 2;
+        const cy = (attrs.y as number) + (attrs.height as number) / 2;
+        const outerRadius = Math.min(attrs.width as number, attrs.height as number) / 2;
+        extraAttrs = { x: cx, y: cy, numPoints: 5, outerRadius, innerRadius: outerRadius * 0.4 };
+        delete (attrs as any).width;
+        delete (attrs as any).height;
+      } else if (shapeType === 'ellipse') {
+        const cx = (attrs.x as number) + (attrs.width as number) / 2;
+        const cy = (attrs.y as number) + (attrs.height as number) / 2;
+        const radius = Math.min(attrs.width as number, attrs.height as number) / 2;
+        extraAttrs = { x: cx, y: cy, radius };
+        delete (attrs as any).width;
+        delete (attrs as any).height;
+      }
+
+      sendCommit([{
+        op: 'add',
+        parentId: 'layer-1',
+        node: {
+          className: shapeDef.konvaClass,
+          attrs: {
+            id: newId,
+            name: shapeName,
+            fill: shapeFill,
+            stroke: shapeStroke,
+            strokeWidth: shapeStrokeWidth,
+            opacity: shapeOpacity,
+            draggable: true,
+            ...attrs,
+            ...extraAttrs,
+          }
+        }
+      }]);
+      
+      setTimeout(() => {
+        setActiveTool('select');
+        setSelectedId(newId);
+      }, 50);
+    }
+  });
+
   // 7. Layer Actions Hook
   const {
     handleDelete, handleToggleVisibility, handleStartRename,
@@ -101,71 +168,13 @@ export default function Editor() {
     setSelectedId,
   });
 
-  // 8. Canvas State Synchronization
+  // 8. WebSocket Sync
   useEffect(() => {
     if (id) connect(id);
     return () => { disconnect(); };
   }, [id, connect, disconnect]);
 
-  // 9. Right Panel Resizing Effects
-  useEffect(() => {
-    localStorage.setItem('webster_panel_width', rightPanelWidth.toString());
-  }, [rightPanelWidth]);
-
-  useEffect(() => {
-    localStorage.setItem('webster_layers_height', layersHeight.toString());
-  }, [layersHeight]);
-  
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizingWidth) {
-        const newWidth = window.innerWidth - e.clientX;
-        if (newWidth > 180 && newWidth < 600) setRightPanelWidth(newWidth);
-      }
-      if (isResizingHeight) {
-        const panelBody = document.querySelector('.editor-right-panel');
-        if (panelBody) {
-          const rect = panelBody.getBoundingClientRect();
-          const relativeY = e.clientY - rect.top;
-          if (relativeY > 100 && relativeY < rect.height - 100) setLayersHeight(relativeY);
-        }
-      }
-    };
-    const handleMouseUp = () => {
-      setIsResizingWidth(false);
-      setIsResizingHeight(false);
-      document.body.style.cursor = 'default';
-    };
-    if (isResizingWidth || isResizingHeight) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizingWidth, isResizingHeight]);
-
-  // 10. Computations
-  const computedState = useMemo(() => getComputedCanvasState(snapshot, commits), [snapshot, commits]);
-
-  const displayState = useMemo(() => {
-    if (!computedState || localPositions.current.size === 0) return computedState;
-    const patchLayer = (layer: any): any => ({
-      ...layer,
-      children: layer.children?.map((child: any) => {
-        const override = child.attrs?.id ? localPositions.current.get(child.attrs.id) : undefined;
-        return override ? { ...child, attrs: { ...child.attrs, ...override } } : child;
-      }),
-    });
-    return {
-      ...computedState,
-      children: computedState.children?.map((child: any) =>
-        child.className === 'Layer' ? patchLayer(child) : child
-      ),
-    };
-  }, [computedState]);
-
+  // 9. Transformer Effect
   useEffect(() => {
     if (!trRef.current) return;
     if (!selectedId || !stageRef.current || activeTool !== 'select') {
@@ -176,31 +185,6 @@ export default function Editor() {
     trRef.current.nodes(node && node.getType() !== 'Layer' ? [node] : []);
     trRef.current.getLayer()?.batchDraw();
   }, [selectedId, displayState, activeTool]);
-
-  // Handle Ctrl+Scroll to zoom
-  useEffect(() => {
-    const area = canvasAreaRef.current;
-    if (!area) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        setZoom(z => Math.min(Math.max(0.1, z - e.deltaY * 0.002), 5));
-      }
-    };
-    area.addEventListener('wheel', handleWheel, { passive: false });
-    return () => area.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  const rootLayers = useMemo(() => computedState?.children?.filter((c: any) => c.className === 'Layer') || [], [computedState]);
-
-  const selectedNode = useMemo(() => {
-    if (!selectedId || !computedState) return null;
-    for (const layer of rootLayers) {
-      const found = layer.children?.find((c: any) => c.attrs?.id === selectedId);
-      if (found) return found;
-    }
-    return null;
-  }, [selectedId, rootLayers, computedState]);
 
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination || result.destination.index === result.source.index) return;
@@ -217,7 +201,6 @@ export default function Editor() {
   const handleTestCommit = () => {
     const existingRects = computedState?.children?.flatMap((c: any) => c.children || []).filter((n: any) => n.className === 'Rect') || [];
     const rectName = `Rect ${existingRects.length + 1}`;
-    
     const randomColor = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
     const x = Math.random() * 400 + 50;
     const y = Math.random() * 300 + 50;
@@ -254,8 +237,14 @@ export default function Editor() {
       <div className="editor-body">
         <Toolbar 
           activeTool={activeTool}
+          activeShape={activeShape}
           onToolSelect={(toolId) => {
             setActiveTool(toolId);
+            setSelectedId(null);
+          }}
+          onShapeSelect={(shape) => {
+            setActiveShape(shape);
+            setActiveTool('shapes');
             setSelectedId(null);
           }}
         />
@@ -278,18 +267,31 @@ export default function Editor() {
                   width={computedState.attrs?.width || 1280} 
                   height={computedState.attrs?.height || 720}
                   ref={stageRef}
-                  style={{ cursor: activeTool === 'pen' ? 'crosshair' : 'default' }}
+                  style={{ cursor: (activeTool === 'pen' || activeTool === 'shapes') ? 'crosshair' : 'default' }}
                   onMouseDown={(e: any) => {
                     if (activeTool === 'pen') {
                       handleDrawMouseDown(e);
+                    } else if (activeTool === 'shapes') {
+                      handleShapeMouseDown(e, activeShape);
                     } else if (e.target === e.target.getStage()) {
                       setSelectedId(null);
                       startPanning(e.evt.clientX, e.evt.clientY);
                     }
                   }}
-                  onMouseMove={(e: any) => { if (activeTool === 'pen') handleDrawMouseMove(e); }}
-                  onMouseUp={() => { if (activeTool === 'pen') handleDrawMouseUp(); }}
-                  onClick={(e: any) => { if (activeTool !== 'pen' && e.target === e.target.getStage()) setSelectedId(null); }}
+                  onMouseMove={(e: any) => {
+                    if (activeTool === 'pen') handleDrawMouseMove(e);
+                    else if (activeTool === 'shapes') handleShapeMouseMove(e);
+                  }}
+                  onMouseUp={() => {
+                    if (activeTool === 'pen') handleDrawMouseUp();
+                    else if (activeTool === 'shapes') handleShapeMouseUp(activeShape, {
+                      fill: shapeFill,
+                      stroke: shapeStroke,
+                      strokeWidth: shapeStrokeWidth,
+                      opacity: shapeOpacity,
+                    });
+                  }}
+                  onClick={(e: any) => { if (activeTool !== 'pen' && activeTool !== 'shapes' && e.target === e.target.getStage()) setSelectedId(null); }}
                 >
                   {displayState?.children?.map((child: any, idx: number) => (
                     <KonvaNode 
@@ -300,19 +302,36 @@ export default function Editor() {
                       onChange={handleNodeChange}
                     />
                   ))}
+
                   <Layer listening={false}>
                     {livePoints && livePoints.length >= 4 && (
                       <Line
                         points={livePoints}
                         stroke={brushColor}
                         strokeWidth={brushSize}
-                        opacity={brushOpacity}
+                        opacity={brushOpacity * 0.6}
                         lineCap={brushLineCap}
                         lineJoin={brushLineCap === 'round' ? 'round' : 'miter'}
                         tension={brushTension}
                       />
                     )}
+                    {liveShapeAttrs && (() => {
+                      const { shapeType, x, y, width, height } = liveShapeAttrs;
+                      const previewProps = {
+                        fill: shapeFill,
+                        stroke: shapeStroke,
+                        strokeWidth: shapeStrokeWidth,
+                        opacity: 0.45,
+                        dash: [6, 4],
+                      };
+                      if (shapeType === 'rect') return <Rect x={x} y={y} width={width} height={height} {...previewProps} />;
+                      if (shapeType === 'ellipse') return <Circle x={x + width / 2} y={y + height / 2} radius={Math.min(width, height) / 2} {...previewProps} />;
+                      if (shapeType === 'polygon') return <RegularPolygon x={x + width / 2} y={y + height / 2} sides={6} radius={Math.min(width, height) / 2} {...previewProps} />;
+                      if (shapeType === 'star') { const r = Math.min(width, height) / 2; return <Star x={x + width / 2} y={y + height / 2} numPoints={5} outerRadius={r} innerRadius={r * 0.4} {...previewProps} />; }
+                      return null;
+                    })()}
                   </Layer>
+
                   <Layer>
                     <Transformer
                       ref={trRef}
@@ -371,6 +390,7 @@ export default function Editor() {
 
           <div className="properties-section" style={{ flex: 1 }}>
             <div className="panel-header" style={{ paddingLeft: 0, marginBottom: 10 }}>Properties</div>
+
             {activeTool === 'pen' ? (
               <LinePropertiesSection
                 color={brushColor}
@@ -388,6 +408,20 @@ export default function Editor() {
                 }}
                 showPreview
               />
+            ) : activeTool === 'shapes' ? (
+              <ShapePropertiesSection
+                fill={shapeFill}
+                stroke={shapeStroke}
+                strokeWidth={shapeStrokeWidth}
+                opacity={shapeOpacity}
+                recentColors={recentColors}
+                onChange={(updates) => {
+                  if (updates.fill !== undefined) setShapeFill(updates.fill);
+                  if (updates.stroke !== undefined) setShapeStroke(updates.stroke);
+                  if (updates.strokeWidth !== undefined) setShapeStrokeWidth(updates.strokeWidth);
+                  if (updates.opacity !== undefined) setShapeOpacity(updates.opacity);
+                }}
+              />
             ) : selectedNode && selectedNode.className === 'Line' ? (
               <LinePropertiesSection
                 color={selectedNode.attrs?.stroke || '#000000'}
@@ -395,6 +429,15 @@ export default function Editor() {
                 opacity={selectedNode.attrs?.opacity ?? 1}
                 lineCap={selectedNode.attrs?.lineCap || 'round'}
                 tension={selectedNode.attrs?.tension ?? 0}
+                recentColors={recentColors}
+                onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
+              />
+            ) : selectedNode && ['Rect', 'Circle', 'RegularPolygon', 'Star'].includes(selectedNode.className) ? (
+              <ShapePropertiesSection
+                fill={selectedNode.attrs?.fill || '#4D96FF'}
+                stroke={selectedNode.attrs?.stroke || '#1A1A1A'}
+                strokeWidth={selectedNode.attrs?.strokeWidth ?? 2}
+                opacity={selectedNode.attrs?.opacity ?? 1}
                 recentColors={recentColors}
                 onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
               />

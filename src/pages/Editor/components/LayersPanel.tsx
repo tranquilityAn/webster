@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { 
   IconEye, IconEyeOff, IconTrash, 
-  IconLayer, IconPen, IconCircle, IconText, IconRect, IconImage 
+  IconLayer, IconPen, IconCircle, IconText, IconRect, IconImage, IconPolygon, IconStar
 } from './EditorIcons';
 
 interface ElementData {
@@ -65,6 +65,8 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
       case 'Text': return <IconText />;
       case 'Rect': return <IconRect />;
       case 'Image': return <IconImage />;
+      case 'RegularPolygon': return <IconPolygon />;
+      case 'Star': return <IconStar />;
       default: return <IconLayer />;
     }
   };
