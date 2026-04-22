@@ -92,6 +92,12 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
     if (className === 'Circle') {
       // Circle uses `radius`; width() returns diameter
       newProps.radius = Math.max(5, (node.radius() * scaleX + node.radius() * scaleY) / 2);
+    } else if (className === 'Line') {
+      // For Line, we must bake the scale into the points array
+      const points = node.points();
+      newProps.points = points.map((val: number, i: number) =>
+        i % 2 === 0 ? val * scaleX : val * scaleY
+      );
     } else {
       newProps.width  = Math.max(5, node.width()  * scaleX);
       newProps.height = Math.max(5, node.height() * scaleY);
@@ -101,11 +107,14 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
     // while the commit round-trips to the server
     node.scaleX(1);
     node.scaleY(1);
-    if (className !== 'Circle') {
+
+    if (className === 'Circle') {
+      node.radius(newProps.radius);
+    } else if (className === 'Line') {
+      node.points(newProps.points);
+    } else {
       node.width(newProps.width);
       node.height(newProps.height);
-    } else {
-      node.radius(newProps.radius);
     }
     node.getLayer()?.batchDraw();
 
