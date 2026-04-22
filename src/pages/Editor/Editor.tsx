@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Stage, Layer, Transformer } from 'react-konva';
+import { Stage, Layer, Transformer, Line } from 'react-konva';
 import { useCanvasStore } from '../../store/useCanvasStore';
 import { getComputedCanvasState } from '../../utils/canvasUtils';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
@@ -111,6 +111,27 @@ const TOOLS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// ─── Draw brush settings ──────────────────────────────────────────────────────
+
+const LINE_CAP_OPTIONS = [
+  { value: 'round',  label: 'Round'  },
+  { value: 'square', label: 'Square' },
+  { value: 'butt',   label: 'Flat'   },
+];
+
+const DEFAULT_COLORS = [
+  '#FFFFFF', // White
+  '#1A1A1A', // Dark
+  '#FF6B6B', // Red
+  '#FF9F45', // Orange
+  '#EDE986', // Primary Accent (Yellow)
+  '#6BCB77', // Green
+  '#4D96FF', // Blue
+  '#A29BFE', // Purple
+];
+
+const MAX_RECENT_COLORS = 8;
+
 export default function Editor() {
   const { id } = useParams<{ id: string }>();
 
@@ -122,6 +143,41 @@ export default function Editor() {
   const [editingValue, setEditingValue] = useState<string>('');
   const [zoom, setZoom] = useState<number>(0.5);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // ── Draw tool settings ────────────────────────────────────────────────────
+  const [brushColor,   setBrushColor]   = useState('#EDE986');
+  const [brushSize,    setBrushSize]    = useState(4);
+  const [brushOpacity, setBrushOpacity] = useState(1);
+  const [brushLineCap, setBrushLineCap] = useState<'round' | 'square' | 'butt'>('round');
+  const [brushTension, setBrushTension] = useState(0.5);
+
+  // ── Color History ─────────────────────────────────────────────────────────
+  const [recentColors, setRecentColors] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('webster_recent_colors');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('webster_recent_colors', JSON.stringify(recentColors));
+  }, [recentColors]);
+
+  const addRecentColor = useCallback((color: string) => {
+    setRecentColors(prev => {
+      // Normalize color to comparison
+      const normalized = color.toUpperCase();
+      const filtered = prev.filter(c => c.toUpperCase() !== normalized);
+      return [color, ...filtered].slice(0, MAX_RECENT_COLORS);
+    });
+  }, []);
+
+  // ── In-progress drawing state ─────────────────────────────────────────────
+  const isDrawingRef   = useRef(false);
+  const currentLineRef = useRef<number[]>([]);
+  const [livePoints, setLivePoints] = useState<number[] | null>(null);
 
   const stageRef = useRef<any>(null);
   const trRef = useRef<any>(null);
@@ -256,6 +312,119 @@ export default function Editor() {
 
   const activeToolRef = useRef(activeTool);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+
+  // ── Drawing helpers ───────────────────────────────────────────────────────
+
+  // Convert stage-relative pointer position accounting for current pan + zoom
+  const getScaledPointer = (stage: any) => {
+    const pos = stage.getPointerPosition();
+    if (!pos) return null;
+    // Konva already accounts for CSS scale inside getPointerPosition()
+    // by comparing the stage attributes (width/height) with getBoundingClientRect().
+    return pos;
+  };
+
+  const brushColorRef   = useRef(brushColor);
+  const brushSizeRef    = useRef(brushSize);
+  const brushOpacityRef = useRef(brushOpacity);
+  const brushLineCapRef = useRef(brushLineCap);
+  const brushTensionRef = useRef(brushTension);
+  useEffect(() => { brushColorRef.current   = brushColor;   }, [brushColor]);
+  useEffect(() => { brushSizeRef.current    = brushSize;    }, [brushSize]);
+  useEffect(() => { brushOpacityRef.current = brushOpacity; }, [brushOpacity]);
+  useEffect(() => { brushLineCapRef.current = brushLineCap; }, [brushLineCap]);
+  useEffect(() => { brushTensionRef.current = brushTension; }, [brushTension]);
+
+  const handleDrawMouseDown = useCallback((e: any) => {
+    if (activeToolRef.current !== 'pen') return;
+    
+    const stage = e.target.getStage();
+    isDrawingRef.current = true;
+    const pos = getScaledPointer(stage);
+    if (!pos) return;
+    currentLineRef.current = [pos.x, pos.y];
+    setLivePoints([pos.x, pos.y]);
+  }, [zoom]);
+
+  const handleDrawMouseMove = useCallback((e: any) => {
+    if (!isDrawingRef.current || activeToolRef.current !== 'pen') return;
+    const stage = e.target.getStage();
+    const pos = getScaledPointer(stage);
+    if (!pos) return;
+    currentLineRef.current = [...currentLineRef.current, pos.x, pos.y];
+    setLivePoints([...currentLineRef.current]);
+  }, [zoom]);
+
+  const handleDrawMouseUp = useCallback(() => {
+    if (!isDrawingRef.current || activeToolRef.current !== 'pen') return;
+    isDrawingRef.current = false;
+
+    const points = currentLineRef.current;
+    if (points.length < 4) {
+      // Too short — just a tap, ignore
+      setLivePoints(null);
+      currentLineRef.current = [];
+      return;
+    }
+
+    // Commit the line to the server — find the first Layer on the stage
+    const layerNode = stageRef.current?.findOne('Layer');
+    const layerId = layerNode?.id() || null;
+
+    const lineId = `line-${Date.now()}`;
+    const ops: any[] = [];
+
+    // If no layer exists yet we need to add one first
+    if (!layerId) {
+      const newLayerId = `layer-${Date.now()}`;
+      ops.push({
+        op: 'add_layer',
+        layer: { className: 'Layer', attrs: { id: newLayerId }, children: [] },
+      });
+      ops.push({
+        op: 'add',
+        parentId: newLayerId,
+        node: {
+          className: 'Line',
+          attrs: {
+            id: lineId,
+            points,
+            stroke: brushColorRef.current,
+            strokeWidth: brushSizeRef.current,
+            opacity: brushOpacityRef.current,
+            lineCap: brushLineCapRef.current,
+            lineJoin: brushLineCapRef.current === 'round' ? 'round' : 'miter',
+            tension: brushTensionRef.current,
+            globalCompositeOperation: 'source-over',
+          },
+        },
+      });
+    } else {
+      ops.push({
+        op: 'add',
+        parentId: layerId,
+        node: {
+          className: 'Line',
+          attrs: {
+            id: lineId,
+            points,
+            stroke: brushColorRef.current,
+            strokeWidth: brushSizeRef.current,
+            opacity: brushOpacityRef.current,
+            lineCap: brushLineCapRef.current,
+            lineJoin: brushLineCapRef.current === 'round' ? 'round' : 'miter',
+            tension: brushTensionRef.current,
+            globalCompositeOperation: 'source-over',
+          },
+        },
+      });
+    }
+
+    sendCommit(ops);
+    addRecentColor(brushColorRef.current);
+    setLivePoints(null);
+    currentLineRef.current = [];
+  }, [sendCommit, addRecentColor]);
 
   // Helper to get icon based on className
   const getIconForType = (type: string) => {
@@ -524,19 +693,28 @@ export default function Editor() {
                   width={computedState.attrs?.width || 1280} 
                   height={computedState.attrs?.height || 720}
                   ref={stageRef}
+                  style={{ cursor: activeTool === 'pen' ? 'crosshair' : 'default' }}
                   onMouseDown={(e: any) => {
-                    if (e.target === e.target.getStage()) {
+                    if (activeTool === 'pen') {
+                      handleDrawMouseDown(e);
+                    } else if (e.target === e.target.getStage()) {
                       setSelectedId(null);
                       handleStartPanning(e.evt.clientX, e.evt.clientY);
                     }
                   }}
+                  onMouseMove={(e: any) => {
+                    if (activeTool === 'pen') handleDrawMouseMove(e);
+                  }}
+                  onMouseUp={() => {
+                    if (activeTool === 'pen') handleDrawMouseUp();
+                  }}
                   onClick={(e: any) => {
-                    if (e.target === e.target.getStage()) {
+                    if (activeTool !== 'pen' && e.target === e.target.getStage()) {
                       setSelectedId(null);
                     }
                   }}
                   onTap={(e: any) => {
-                    if (e.target === e.target.getStage()) {
+                    if (activeTool !== 'pen' && e.target === e.target.getStage()) {
                       setSelectedId(null);
                     }
                   }}
@@ -554,6 +732,22 @@ export default function Editor() {
                       onChange={handleNodeChange}
                     />
                   ))}
+                  {/* Live drawing preview layer */}
+                  <Layer listening={false}>
+                    {livePoints && livePoints.length >= 4 && (
+                      <Line
+                        points={livePoints}
+                        stroke={brushColor}
+                        strokeWidth={brushSize}
+                        opacity={brushOpacity}
+                        lineCap={brushLineCap}
+                        lineJoin={brushLineCap === 'round' ? 'round' : 'miter'}
+                        tension={brushTension}
+                        globalCompositeOperation="source-over"
+                      />
+                    )}
+                  </Layer>
+
                   {/* Transformer lives in its own Layer.
                       Do NOT set listening={false} on this Layer —
                       anchors need mouse events to be drag-resizable. */}
@@ -689,7 +883,166 @@ export default function Editor() {
           {/* Properties */}
           <div className="properties-section">
             <div className="panel-header" style={{ paddingLeft: 0, marginBottom: 10 }}>Properties</div>
-            {snapshot ? (
+
+            {activeTool === 'pen' ? (
+              /* ── Draw Tool Properties ── */
+              <div className="draw-props">
+
+                {/* Color */}
+                <div className="draw-prop-group">
+                  <label className="draw-prop-label">Color</label>
+                  <div className="draw-color-row">
+                    <div className="color-swatch-wrapper">
+                      <input
+                        id="brush-color"
+                        type="color"
+                        value={brushColor}
+                        onChange={e => setBrushColor(e.target.value)}
+                        className="color-input"
+                        title="Brush color"
+                      />
+                      <div className="color-swatch" style={{ backgroundColor: brushColor }} />
+                    </div>
+                    <span className="draw-prop-value-label">{brushColor.toUpperCase()}</span>
+                  </div>
+                  <div className="quick-colors-section">
+                    <span className="quick-colors-label">Default</span>
+                    <div className="quick-colors">
+                      {DEFAULT_COLORS.map(c => (
+                        <button
+                          key={c}
+                          className={`quick-color-btn${brushColor.toUpperCase() === c.toUpperCase() ? ' active' : ''}`}
+                          style={{ backgroundColor: c }}
+                          onClick={() => setBrushColor(c)}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {recentColors.length > 0 && (
+                    <div className="quick-colors-section">
+                      <span className="quick-colors-label">Recent</span>
+                      <div className="quick-colors">
+                        {recentColors.map(c => (
+                          <button
+                            key={`recent-${c}`}
+                            className={`quick-color-btn${brushColor.toUpperCase() === c.toUpperCase() ? ' active' : ''}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => setBrushColor(c)}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stroke Width */}
+                <div className="draw-prop-group">
+                  <div className="draw-prop-header">
+                    <label className="draw-prop-label">Width</label>
+                    <span className="draw-prop-val">{brushSize}px</span>
+                  </div>
+                  <input
+                    id="brush-size"
+                    type="range"
+                    min={1}
+                    max={80}
+                    step={1}
+                    value={brushSize}
+                    onChange={e => setBrushSize(Number(e.target.value))}
+                    className="draw-slider"
+                  />
+                  <div className="draw-slider-marks">
+                    <span>1</span><span>40</span><span>80</span>
+                  </div>
+                </div>
+
+                {/* Opacity */}
+                <div className="draw-prop-group">
+                  <div className="draw-prop-header">
+                    <label className="draw-prop-label">Opacity</label>
+                    <span className="draw-prop-val">{Math.round(brushOpacity * 100)}%</span>
+                  </div>
+                  <input
+                    id="brush-opacity"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={brushOpacity}
+                    onChange={e => setBrushOpacity(Number(e.target.value))}
+                    className="draw-slider opacity-slider"
+                    style={{
+                      '--slider-color': brushColor,
+                    } as React.CSSProperties}
+                  />
+                  <div className="draw-slider-marks">
+                    <span>0%</span><span>50%</span><span>100%</span>
+                  </div>
+                </div>
+
+                {/* Line Cap */}
+                <div className="draw-prop-group">
+                  <label className="draw-prop-label">Line cap</label>
+                  <div className="linecap-options">
+                    {LINE_CAP_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        className={`linecap-btn${brushLineCap === opt.value ? ' active' : ''}`}
+                        onClick={() => setBrushLineCap(opt.value as any)}
+                        title={opt.label}
+                      >
+                        <span className={`linecap-preview linecap-${opt.value}`} />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tension (smoothness) */}
+                <div className="draw-prop-group">
+                  <div className="draw-prop-header">
+                    <label className="draw-prop-label">Smoothness</label>
+                    <span className="draw-prop-val">{Math.round(brushTension * 100)}%</span>
+                  </div>
+                  <input
+                    id="brush-tension"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={brushTension}
+                    onChange={e => setBrushTension(Number(e.target.value))}
+                    className="draw-slider"
+                  />
+                  <div className="draw-slider-marks">
+                    <span>Sharp</span><span>Smooth</span>
+                  </div>
+                </div>
+
+                {/* Preview */}
+                <div className="draw-prop-group">
+                  <label className="draw-prop-label">Preview</label>
+                  <div className="brush-preview-wrap">
+                    <svg width="100%" height="44" viewBox="0 0 200 44" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M10 22 Q 50 8, 100 22 T 190 22"
+                        fill="none"
+                        stroke={brushColor}
+                        strokeWidth={Math.min(brushSize, 30)}
+                        strokeLinecap={brushLineCap}
+                        strokeLinejoin={brushLineCap === 'round' ? 'round' : 'miter'}
+                        opacity={brushOpacity}
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+              </div>
+            ) : snapshot ? (
+              /* ── Canvas/Element Properties ── */
               <>
                 <div className="prop-row">
                   <span className="prop-label">Width</span>

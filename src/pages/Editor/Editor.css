@@ -395,3 +395,278 @@
   background: #3A3A3A;
   border-radius: 2px;
 }
+
+/* === Draw Tool Properties === */
+.properties-section {
+  overflow-y: auto;
+  max-height: calc(100vh - 280px);
+}
+
+.properties-section::-webkit-scrollbar { width: 4px; }
+.properties-section::-webkit-scrollbar-track { background: transparent; }
+.properties-section::-webkit-scrollbar-thumb { background: #3A3A3A; border-radius: 2px; }
+
+.draw-props {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.draw-prop-group {
+  padding: 10px 16px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.draw-prop-group:last-child {
+  border-bottom: none;
+}
+
+.draw-prop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.draw-prop-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #777777;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.draw-prop-header .draw-prop-label {
+  margin-bottom: 0;
+}
+
+.draw-prop-val {
+  font-size: 12px;
+  color: #EDE986;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+/* Color picker row */
+.draw-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.color-swatch-wrapper {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 2px solid #444;
+  pointer-events: none;
+  transition: border-color 0.15s;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+}
+
+.color-swatch-wrapper:hover .color-swatch {
+  border-color: #EDE986;
+}
+
+.draw-prop-value-label {
+  font-size: 12px;
+  color: #C0C0C0;
+  font-family: monospace;
+  letter-spacing: 0.04em;
+}
+
+/* Quick color palette */
+.quick-colors-section {
+  margin-top: 12px;
+}
+
+.quick-colors-section:first-of-type {
+  margin-top: 0;
+}
+
+.quick-colors-label {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.quick-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-color-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1.5px solid #333;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+}
+
+.quick-color-btn:hover {
+  transform: translateY(-2px);
+  border-color: #EDE986;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.quick-color-btn.active {
+  border-color: #EDE986;
+  box-shadow: 0 0 0 1.5px #EDE986, 0 4px 10px rgba(237, 233, 134, 0.2);
+  transform: scale(1.1);
+  z-index: 1;
+}
+
+/* Range sliders */
+.draw-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #3A3A3A;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+}
+
+.draw-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #EDE986;
+  cursor: pointer;
+  border: 2px solid #1A1A1A;
+  box-shadow: 0 0 0 1px #EDE986;
+  transition: transform 0.1s;
+}
+
+.draw-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.draw-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #EDE986;
+  cursor: pointer;
+  border: 2px solid #1A1A1A;
+}
+
+/* Opacity slider: checkerboard background to show transparency */
+.opacity-slider {
+  background:
+    linear-gradient(to right, transparent, var(--slider-color, #EDE986)),
+    repeating-conic-gradient(#444 0% 25%, #2a2a2a 0% 50%) 0 0 / 8px 8px;
+}
+
+.draw-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.draw-slider-marks span {
+  font-size: 10px;
+  color: #555;
+}
+
+/* Line cap selector */
+.linecap-options {
+  display: flex;
+  gap: 6px;
+}
+
+.linecap-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 4px;
+  background: #1A1A1A;
+  border: 1.5px solid #333;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #777;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.linecap-btn:hover {
+  border-color: #555;
+  color: #ccc;
+}
+
+.linecap-btn.active {
+  border-color: #EDE986;
+  color: #EDE986;
+  background: rgba(237, 233, 134, 0.06);
+}
+
+/* Tiny visual previews inside each linecap button */
+.linecap-preview {
+  display: block;
+  width: 28px;
+  height: 6px;
+  background: currentColor;
+}
+
+.linecap-preview.linecap-round {
+  border-radius: 3px;
+}
+
+.linecap-preview.linecap-square {
+  border-radius: 0;
+}
+
+.linecap-preview.linecap-butt {
+  border-radius: 0;
+  width: 24px;
+}
+
+/* Brush preview strip */
+.brush-preview-wrap {
+  background: #1A1A1A;
+  border-radius: 6px;
+  border: 1px solid #333;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+}
