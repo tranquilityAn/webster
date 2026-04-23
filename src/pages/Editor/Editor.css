@@ -1,16 +1,23 @@
+/* ============================================
+   WEBSTER EDITOR — Unified with Auth/Main Style
+   ============================================ */
+
 /* === Editor Layout === */
 .editor-wrapper {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 60px);
   overflow: hidden;
   background-color: #1A1A1A;
+  font-family: 'Inter', sans-serif;
 }
 
 /* === Top Editor Bar === */
 .editor-topbar {
   height: 44px;
-  background-color: #222222;
+  background-color: rgba(37, 37, 37, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid #333333;
   display: flex;
   align-items: center;
@@ -45,45 +52,49 @@
 .topbar-btn {
   background: transparent;
   border: none;
-  color: #B0B0B0;
+  color: #A0A0A0;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 13px;
   font-family: 'Inter', sans-serif;
   display: flex;
   align-items: center;
   gap: 5px;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
 .topbar-btn:hover {
-  background-color: #2E2E2E;
-  color: #F5F5F5;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #E0E0E0;
 }
 
 .topbar-btn-accent {
   background-color: #EDE986;
   color: #1A1A1A;
-  font-weight: 600;
+  font-weight: 700;
   padding: 5px 14px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12px;
 }
 
 .topbar-btn-accent:hover {
-  background-color: #f0ec88;
+  background-color: #F8F495;
   color: #111;
 }
 
 .topbar-divider {
   width: 1px;
   height: 20px;
-  background-color: #383838;
+  background-color: #333333;
   flex-shrink: 0;
 }
 
 .topbar-canvas-name {
-  color: #F5F5F5;
+  color: #E0E0E0;
   font-size: 13px;
   font-weight: 500;
 }
@@ -110,10 +121,12 @@
   overflow: hidden;
 }
 
-/* === Left Toolbar === */
+/* === Left Toolbar (Glassmorphism) === */
 .editor-toolbar {
   width: 52px;
-  background-color: #222222;
+  background-color: rgba(37, 37, 37, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-right: 1px solid #333333;
   display: flex;
   flex-direction: column;
@@ -130,19 +143,23 @@
   height: 36px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #888888;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.2s;
   position: relative;
 }
 
-.toolbar-btn:hover,
+.toolbar-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #E0E0E0;
+}
+
 .toolbar-btn.active {
-  background-color: #2E2E2E;
+  background-color: rgba(237, 233, 134, 0.1);
   color: #EDE986;
 }
 
@@ -176,10 +193,12 @@
   position: relative;
 }
 
-/* === Right Panel === */
+/* === Right Panel (Glassmorphism) === */
 .editor-right-panel {
-  background-color: #222222;
-  border-left: 1px solid #111;
+  background-color: rgba(37, 37, 37, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left: 1px solid #333333;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -227,15 +246,16 @@
 
 .panel-header {
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #EDE986;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   border-bottom: 1px solid #333333;
   flex-shrink: 0;
 }
 
+/* === Layers List === */
 .layers-list {
   flex: 1;
   overflow-y: auto;
@@ -248,20 +268,20 @@
   gap: 8px;
   padding: 7px 16px;
   font-size: 13px;
-  color: #B0B0B0;
+  color: #A0A0A0;
   cursor: pointer;
   user-select: none;
-  transition: background 0.12s, color 0.12s;
+  transition: all 0.15s;
   border-radius: 0;
 }
 
 .layer-item:hover {
-  background-color: #2E2E2E;
-  color: #F5F5F5;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #E0E0E0;
 }
 
 .layer-item.active {
-  background-color: #303030;
+  background-color: rgba(237, 233, 134, 0.08);
   color: #EDE986;
 }
 
@@ -282,11 +302,11 @@
 .layer-item-input {
   background: #1a1a1a;
   border: 1px solid #EDE986;
-  border-radius: 3px;
+  border-radius: 6px;
   color: #F5F5F5;
   font-size: 13px;
   font-family: inherit;
-  padding: 2px 4px;
+  padding: 2px 6px;
   width: 100%;
   outline: none;
   margin-top: -3px;
@@ -300,9 +320,9 @@
 .layer-visibility-btn {
   background: transparent;
   border: none;
-  color: #666;
+  color: #555;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -321,13 +341,12 @@
   height: 14px;
 }
 
-
 .layer-delete-btn {
   background: transparent;
   border: none;
-  color: #666;
+  color: #555;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, background 0.15s;
@@ -373,14 +392,16 @@
   background: #2a2a2a;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   opacity: 0.8;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
+/* === Properties Section === */
 .properties-section {
   flex-shrink: 0;
   padding: 12px 16px;
   min-height: 100px;
   overflow-y: auto;
+  max-height: calc(100vh - 280px);
 }
 
 .properties-placeholder {
@@ -398,12 +419,12 @@
 
 .prop-label {
   font-size: 12px;
-  color: #777777;
+  color: #888888;
 }
 
 .prop-value {
   font-size: 12px;
-  color: #C0C0C0;
+  color: #E0E0E0;
   font-family: monospace;
 }
 
@@ -431,16 +452,11 @@
   border-radius: 2px;
 }
 
-/* === Draw Tool Properties === */
-.properties-section {
-  overflow-y: auto;
-  max-height: calc(100vh - 280px);
-}
-
 .properties-section::-webkit-scrollbar { width: 4px; }
 .properties-section::-webkit-scrollbar-track { background: transparent; }
 .properties-section::-webkit-scrollbar-thumb { background: #3A3A3A; border-radius: 2px; }
 
+/* === Draw Tool Properties === */
 .draw-props {
   display: flex;
   flex-direction: column;
@@ -466,8 +482,8 @@
 .draw-prop-label {
   font-size: 11px;
   font-weight: 600;
-  color: #777777;
-  letter-spacing: 0.05em;
+  color: #888888;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   display: block;
   margin-bottom: 8px;
@@ -513,11 +529,11 @@
 .color-swatch {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
-  border: 2px solid #444;
+  border-radius: 8px;
+  border: 2px solid #333;
   pointer-events: none;
-  transition: border-color 0.15s;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+  transition: border-color 0.2s;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 .color-swatch-wrapper:hover .color-swatch {
@@ -526,7 +542,7 @@
 
 .draw-prop-value-label {
   font-size: 12px;
-  color: #C0C0C0;
+  color: #E0E0E0;
   font-family: monospace;
   letter-spacing: 0.04em;
 }
@@ -542,9 +558,9 @@
 
 .quick-colors-label {
   font-size: 10px;
-  color: #666;
+  color: #888;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   display: block;
   margin-bottom: 6px;
   font-weight: 600;
@@ -559,19 +575,19 @@
 .quick-color-btn {
   width: 22px;
   height: 22px;
-  border-radius: 5px;
+  border-radius: 6px;
   border: 1.5px solid #333;
   cursor: pointer;
   padding: 0;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .quick-color-btn:hover {
   transform: translateY(-2px);
   border-color: #EDE986;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .quick-color-btn.active {
@@ -588,7 +604,7 @@
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: #3A3A3A;
+  background: #333333;
   outline: none;
   cursor: pointer;
   margin: 0;
@@ -619,7 +635,7 @@
   border: 2px solid #1A1A1A;
 }
 
-/* Opacity slider: checkerboard background to show transparency */
+/* Opacity slider */
 .opacity-slider {
   background:
     linear-gradient(to right, transparent, var(--slider-color, #EDE986)),
@@ -650,27 +666,28 @@
   align-items: center;
   gap: 5px;
   padding: 7px 4px;
-  background: #1A1A1A;
+  background: #1E1E1E;
   border: 1.5px solid #333;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  color: #777;
+  color: #888;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 
 .linecap-btn:hover {
-  border-color: #555;
-  color: #ccc;
+  border-color: #444;
+  color: #E0E0E0;
 }
 
 .linecap-btn.active {
-  border-color: #EDE986;
+  border-color: rgba(237, 233, 134, 0.5);
   color: #EDE986;
   background: rgba(237, 233, 134, 0.06);
+  box-shadow: 0 0 8px rgba(237, 233, 134, 0.1);
 }
 
 /* Tiny visual previews inside each linecap button */
@@ -696,8 +713,8 @@
 
 /* Brush preview strip */
 .brush-preview-wrap {
-  background: #1A1A1A;
-  border-radius: 6px;
+  background: #1E1E1E;
+  border-radius: 10px;
   border: 1px solid #333;
   overflow: hidden;
   display: flex;
@@ -711,15 +728,17 @@
   position: absolute;
   left: calc(100% + 8px);
   top: 8px;
-  background: #272727;
-  border: 1px solid #3A3A3A;
-  border-radius: 10px;
+  background: rgba(37, 37, 37, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #333333;
+  border-radius: 14px;
   padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   z-index: 100;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   animation: flyout-in 0.12s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 130px;
 }
@@ -736,13 +755,13 @@
   padding: 8px 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  color: #B0B0B0;
+  border-radius: 10px;
+  color: #A0A0A0;
   font-size: 12px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: all 0.15s;
   text-align: left;
   white-space: nowrap;
 }
@@ -755,8 +774,8 @@
 }
 
 .shape-flyout-btn:hover {
-  background: #2E2E2E;
-  color: #F5F5F5;
+  background: rgba(255, 255, 255, 0.05);
+  color: #E0E0E0;
 }
 
 .shape-flyout-btn.active {

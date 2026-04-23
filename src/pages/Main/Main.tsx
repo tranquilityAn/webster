@@ -75,7 +75,7 @@ export default function Main() {
       if (res.ok) {
         const data = await res.json();
         const projectId = data.data.id;
-        
+
         // Automatically create a default canvas for the new project
         await fetch('/webster/v1/canvases', {
           method: 'POST',
@@ -178,13 +178,30 @@ export default function Main() {
         <div className="sidebar-section">
           <h3>Menu</h3>
           <ul className="sidebar-nav">
-            <li className="active">Projects</li>
-            <li>Settings</li>
+            <li className="active">
+              <span className="nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+              </span>
+              Projects
+            </li>
+            <li>
+              <span className="nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              </span>
+              Settings
+            </li>
           </ul>
         </div>
-        
+
+        {/* Sidebar Waves Decoration */}
+        <div className="sidebar-waves">
+          <div className="wave"></div>
+          <div className="wave"></div>
+        </div>
+
         <div className="sidebar-bottom">
           <button className="logout-btn" onClick={handleLogout}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
             Logout
           </button>
         </div>
@@ -194,7 +211,7 @@ export default function Main() {
       <section className="main-content">
         <div className="content-header">
           <h2>Your Projects</h2>
-          <button 
+          <button
             className="create-project-btn"
             onClick={() => setShowCreateModal(true)}
           >
@@ -211,27 +228,19 @@ export default function Main() {
         ) : (
           <div className="projects-grid">
             {projects.map((project) => (
-              <div key={project.id} className="project-card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div key={project.id} className="project-card">
                 <div style={{ flex: 1 }}>
                   <h3>{project.attributes.name}</h3>
                   <p className="project-date">
                     Created: {new Date(project.attributes.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <button 
+                <button
+                  className="open-editor-btn"
                   onClick={() => handleOpenEditor(project.id)}
                   disabled={isOpeningEditor === project.id}
-                  style={{
-                    marginTop: '15px',
-                    padding: '8px',
-                    backgroundColor: isOpeningEditor === project.id ? '#666' : '#4A90D9',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isOpeningEditor === project.id ? 'default' : 'pointer'
-                  }}
                 >
-                  {isOpeningEditor === project.id ? 'Opening...' : 'Open Editor Stub'}
+                  {isOpeningEditor === project.id ? 'Opening...' : 'Open Editor'}
                 </button>
               </div>
             ))}
@@ -239,7 +248,7 @@ export default function Main() {
         )}
       </section>
 
-      {/* Create Project */}
+      {/* Create Project Modal */}
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -263,8 +272,8 @@ export default function Main() {
                 />
               </div>
               <div className="modal-actions">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="cancel-btn"
                   onClick={() => {
                     setShowCreateModal(false);
@@ -273,8 +282,8 @@ export default function Main() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="submit-btn"
                   disabled={isCreating || !newProjectName.trim()}
                 >

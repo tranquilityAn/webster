@@ -14,5 +14,5 @@
 main {
   width: 100%;
   height: 100vh;
-  padding-top: 70px; /* Offset for the header */
+  padding-top: 60px; /* Matched to header height */
 }

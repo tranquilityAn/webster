@@ -1,192 +1,254 @@
-/* Reusable minimalist auth styles for login and registration */
+/* ============================================
+   WEBSTER AUTH PAGES — Balanced Gray Style
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 .auth-page {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 0 20px;
+  min-height: calc(100vh - 70px);
+  background-color: #1A1A1A;
+  /* Slightly lighter background */
+  font-family: 'Inter', sans-serif;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  /* background-image: url('/back.jpg');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: center; */
+
 }
 
 .auth-container {
-  margin-top: 2.5%;
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   background-color: #252525;
+  /* Returned to the lighter gray */
+  border: 1px solid #333333;
+  border-radius: 20px;
   padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+/* Static Wavy Decoration */
+.auth-waves {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: no-repeat bottom/cover url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 88.7'%3E%3Cpath d='M800 56.9c-155.5 0-204.9-50-405.5-49.9-200 0-250 49.9-394.5 49.9V88.7h800v-31.8z' fill='%23EDE986'/%3E%3C/svg%3E");
+}
+
+.wave:nth-child(2) {
+  transform: scaleX(-1) translateX(-10%);
+  opacity: 0.6;
+}
+
+.auth-form-header {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  margin-bottom: 48px;
+  /* Increased spacing */
 }
 
 .auth-container h1 {
-  font-size: 2rem;
-  letter-spacing: -0.02em;
-  margin-bottom: 5px;
-  color: #FFFFFF;
-  text-align: center;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #EDE986;
+  margin-bottom: 8px;
 }
 
 .auth-subtitle {
   color: #A0A0A0;
-  text-align: center;
-  font-weight: 300;
-  margin-bottom: 15px;
+  font-size: 0.9rem;
+  font-weight: 400;
 }
 
 .auth-form {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  text-align: left;
+  gap: 8px;
 }
 
 .input-group label {
-  font-size: 0.85rem;
-  color: #A0A0A0;
+  font-size: 0.75rem;
+  color: #888888;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  color: #555555;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+.input-group:focus-within .input-icon {
+  color: #EDE986;
 }
 
 .input-group input {
-  padding: 14px 16px;
+  width: 100%;
+  padding: 14px 16px 14px 46px;
+  /* Added padding-left for icon */
   background-color: #1E1E1E;
   border: 1px solid #333333;
-  border-radius: 6px;
+  border-radius: 10px;
   color: #F5F5F5;
-  font-size: 1rem;
-  font-family: 'Inter', sans-serif;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all 0.2s;
 }
 
 .input-group input:focus {
   outline: none;
   border-color: #EDE986;
-  box-shadow: 0 0 0 2px rgba(237, 233, 134, 0.1);
-}
-
-.input-group input::placeholder {
-  color: #555555;
+  background-color: #222222;
 }
 
 .auth-btn {
-  margin-top: 10px;
-  padding: 14px;
-  font-size: 1rem;
-  font-weight: 500;
+  margin-top: 6px;
+  padding: 15px;
+  font-size: 0.9rem;
+  font-weight: 700;
   background-color: #EDE986;
-  color: #1E1E1E;
+  color: #1A1A1A;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  letter-spacing: 0.05em;
+  transition: all 0.2s;
   text-transform: uppercase;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  letter-spacing: 0.04em;
 }
 
 .auth-btn:hover:not(:disabled) {
   background-color: #F8F495;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(237, 233, 134, 0.15);
-}
-
-.auth-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-.auth-btn:disabled {
-  background-color: #555555;
-  color: #888888;
-  cursor: not-allowed;
-}
-
-.status-message {
-  padding: 12px;
-  border-radius: 6px;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: #EDE986;
-  font-size: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: center;
-}
-
-.auth-footer {
-  margin-top: 15px;
-  text-align: center;
-  font-size: 0.9rem;
-  color: #888888;
-}
-
-.auth-footer a {
-  color: #EDE986;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-
-.auth-footer a:hover {
-  text-decoration: underline;
-  color: #F8F495;
+  transform: translateY(-1px);
 }
 
 .auth-divider {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
-  text-align: center;
-  color: #777777;
-  margin: 10px 0;
+  margin: 24px 0;
+  color: #444444;
 }
 
 .auth-divider::before,
 .auth-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #444444;
+  border-bottom: 1px solid #333333;
 }
 
 .auth-divider span {
-  padding: 0 10px;
-  font-size: 0.8rem;
+  padding: 0 12px;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
 .google-auth-btn {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 12px;
-  background-color: #FFFFFF;
-  color: #333333;
-  border: 1px solid #DDDDDD;
-  border-radius: 6px;
-  font-size: 0.95rem;
+  padding: 13px;
+  background-color: transparent;
+  color: #A0A0A0;
+  border: 1.5px solid #333333;
+  border-radius: 10px;
+  font-size: 0.9rem;
   font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s ease;
-  width: 100%;
+  transition: all 0.2s;
 }
 
 .google-auth-btn:hover {
-  background-color: #F5F5F5;
-  border-color: #CCCCCC;
+  background-color: #2A2A2A;
+  border-color: #444444;
+  color: #FFFFFF;
 }
 
 .google-auth-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+}
+
+.status-message {
+  position: relative;
+  z-index: 2;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: rgba(237, 233, 134, 0.05);
+  color: #EDE986;
+  font-size: 0.85rem;
+  text-align: center;
+  border: 1px solid rgba(237, 233, 134, 0.1);
+}
+
+.status-message.error {
+  color: #FF8080;
+  background-color: rgba(255, 80, 80, 0.05);
+  border-color: rgba(255, 80, 80, 0.1);
+}
+
+.auth-footer {
+  position: relative;
+  z-index: 2;
+  margin-top: 32px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666666;
+}
+
+.auth-footer a {
+  color: #EDE986;
+  text-decoration: none;
+  font-weight: 600;
 }
