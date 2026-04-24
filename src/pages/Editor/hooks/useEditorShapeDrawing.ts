@@ -71,14 +71,33 @@ export const useEditorShapeDrawing = ({
     }
 
     setLiveShape(null);
-    onCommit(shapeType, { ...shapeAttrs, ...rectFromPoints(startX, startY, currentX, currentY) });
+    
+    if (shapeType === 'line' || shapeType === 'arrow') {
+      onCommit(shapeType, { 
+        ...shapeAttrs, 
+        points: [startX, startY, currentX, currentY] 
+      });
+    } else {
+      onCommit(shapeType, { 
+        ...shapeAttrs, 
+        ...rectFromPoints(startX, startY, currentX, currentY) 
+      });
+    }
   }, [liveShape, onCommit]);
 
   /** Preview geometry derived from live state – passed to Konva for render */
   const getLiveShapeAttrs = useCallback(() => {
     if (!liveShape) return null;
-    const { startX, startY, currentX, currentY } = liveShape;
-    return { ...rectFromPoints(startX, startY, currentX, currentY), shapeType: liveShape.shapeType };
+    const { startX, startY, currentX, currentY, shapeType } = liveShape;
+    
+    if (shapeType === 'line' || shapeType === 'arrow') {
+      return { 
+        points: [startX, startY, currentX, currentY], 
+        shapeType 
+      };
+    }
+    
+    return { ...rectFromPoints(startX, startY, currentX, currentY), shapeType };
   }, [liveShape]);
 
   return {

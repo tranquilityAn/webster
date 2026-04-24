@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { 
   IconEye, IconEyeOff, IconTrash, 
-  IconLayer, IconPen, IconCircle, IconText, IconRect, IconImage, IconPolygon, IconStar
+  IconLayer, IconPen, IconCircle, IconText, IconRect, IconImage, IconPolygon, IconStar,
+  IconLine, IconArrow
 } from './EditorIcons';
 
 interface ElementData {
@@ -58,9 +59,11 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
     return results.reverse();
   }, [rootLayers]);
 
-  const getIconForType = (type: string) => {
+  const getIconForType = (type: string, name: string) => {
     switch (type) {
-      case 'Line': return <IconPen />;
+      case 'Line': 
+        return name.toLowerCase().includes('drawing') ? <IconPen /> : <IconLine />;
+      case 'Arrow': return <IconArrow />;
       case 'Circle': return <IconCircle />;
       case 'Text': return <IconText />;
       case 'Rect': return <IconRect />;
@@ -101,7 +104,7 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
                           >
                             {el.visible ? <IconEye /> : <IconEyeOff />}
                           </button>
-                          {getIconForType(el.type)}
+                          {getIconForType(el.type, el.name)}
                           {editingId === el.id ? (
                             <input
                               className="layer-item-input"

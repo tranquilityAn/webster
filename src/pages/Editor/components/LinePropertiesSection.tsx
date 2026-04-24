@@ -1,6 +1,8 @@
 import React from 'react';
 import { ColorPickerRow } from './ColorPickerRow';
 import { PropertySlider } from './PropertySlider';
+import { PropertyInput } from './PropertyInput';
+import { IconDash } from './EditorIcons';
 
 export const DEFAULT_COLORS = [
   '#FFFFFF', // White
@@ -25,6 +27,7 @@ interface LinePropertiesSectionProps {
   opacity: number;
   lineCap: string;
   tension: number;
+  dash?: number[];
   recentColors: string[];
   onChange: (updates: any) => void;
   showPreview?: boolean;
@@ -36,10 +39,13 @@ export const LinePropertiesSection: React.FC<LinePropertiesSectionProps> = ({
   opacity,
   lineCap,
   tension,
+  dash = [],
   recentColors,
   onChange,
   showPreview = false,
 }) => {
+  const isDashed = dash && dash.length >= 2;
+
   return (
     <div className="draw-props">
       {/* Color */}
@@ -61,6 +67,35 @@ export const LinePropertiesSection: React.FC<LinePropertiesSectionProps> = ({
         marks={['1', '40', '80']}
         onChange={(v) => onChange({ strokeWidth: v })}
       />
+
+      {/* Dash Section */}
+      <div className="draw-prop-group">
+        <div className="draw-prop-header">
+          <label className="draw-prop-label" style={{ marginBottom: 0 }}>Dashed</label>
+          <button 
+            className={`toolbar-btn ${isDashed ? 'active' : ''}`}
+            onClick={() => onChange({ dash: isDashed ? [] : [10, 5] })}
+            style={{ width: 26, height: 26, borderRadius: 8, padding: 0 }}
+            title={isDashed ? 'Remove dash' : 'Add dash'}
+          >
+            <IconDash />
+          </button>
+        </div>
+        {isDashed && (
+          <div className="draw-prop-grid" style={{ marginTop: 10 }}>
+            <PropertyInput
+              label="Length"
+              value={dash[0]}
+              onChange={(v) => onChange({ dash: [v, dash[1]] })}
+            />
+            <PropertyInput
+              label="Gap"
+              value={dash[1]}
+              onChange={(v) => onChange({ dash: [dash[0], v] })}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Opacity */}
       <PropertySlider
@@ -122,6 +157,7 @@ export const LinePropertiesSection: React.FC<LinePropertiesSectionProps> = ({
                 strokeWidth={Math.min(width, 30)}
                 strokeLinecap={lineCap as any}
                 strokeLinejoin={lineCap === 'round' ? 'round' : 'miter'}
+                strokeDasharray={dash.join(',')}
                 opacity={opacity}
               />
             </svg>

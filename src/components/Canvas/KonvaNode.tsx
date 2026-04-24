@@ -92,8 +92,8 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
     if (className === 'Circle') {
       // Circle uses `radius`; width() returns diameter
       newProps.radius = Math.max(5, (node.radius() * scaleX + node.radius() * scaleY) / 2);
-    } else if (className === 'Line') {
-      // For Line, we must bake the scale into the points array
+    } else if (className === 'Line' || className === 'Arrow') {
+      // For Line/Arrow, we must bake the scale into the points array
       const points = node.points();
       newProps.points = points.map((val: number, i: number) =>
         i % 2 === 0 ? val * scaleX : val * scaleY
@@ -110,7 +110,7 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
 
     if (className === 'Circle') {
       node.radius(newProps.radius);
-    } else if (className === 'Line') {
+    } else if (className === 'Line' || className === 'Arrow') {
       node.points(newProps.points);
     } else {
       node.width(newProps.width);

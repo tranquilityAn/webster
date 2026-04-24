@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star } from 'react-konva';
+import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star, Arrow } from 'react-konva';
 import { useCanvasStore } from '../../store/useCanvasStore';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
 import { LinePropertiesSection } from './components/LinePropertiesSection';
@@ -42,6 +42,11 @@ export default function Editor() {
   const [shapeStroke, setShapeStroke] = useState('#1A1A1A');
   const [shapeStrokeWidth, setShapeStrokeWidth] = useState(2);
   const [shapeOpacity, setShapeOpacity] = useState(1);
+  const [shapeDash, setShapeDash] = useState<number[]>([]);
+  const [arrowPointerLength, setArrowPointerLength] = useState(10);
+  const [arrowPointerWidth, setArrowPointerWidth] = useState(10);
+  const [arrowPointerAtBeginning, setArrowPointerAtBeginning] = useState(false);
+  const [arrowPointerAtEnding, setArrowPointerAtEnding] = useState(true);
 
   // 3. Layout & Panels
   const { 
@@ -71,8 +76,8 @@ export default function Editor() {
   } = useEditorDrawing({
     stageRef,
     onCommit: (points, attrs) => {
-      const existingLines = computedState?.children?.flatMap((c: any) => c.children || []).filter((n: any) => n.className === 'Line') || [];
-      const lineName = `Line ${existingLines.length + 1}`;
+      const existingDrawings = computedState?.children?.flatMap((c: any) => c.children || []).filter((n: any) => n.attrs?.name?.startsWith('Drawing')) || [];
+      const lineName = `Drawing ${existingDrawings.length + 1}`;
       
       sendCommit([{
         op: 'add',
@@ -103,8 +108,8 @@ export default function Editor() {
     onCommit: (shapeType, attrs) => {
       const shapeDef = SHAPE_DEFS.find(s => s.type === shapeType)!;
       const allNodes = computedState?.children?.flatMap((c: any) => c.children || []) || [];
-      const sameClass = allNodes.filter((n: any) => n.className === shapeDef.konvaClass);
-      const shapeName = `${shapeDef.label} ${sameClass.length + 1}`;
+      const sameNameNodes = allNodes.filter((n: any) => n.attrs?.name?.startsWith(shapeDef.label));
+      const shapeName = `${shapeDef.label} ${sameNameNodes.length + 1}`;
       const newId = `${shapeType}-${Date.now()}`;
 
       let extraAttrs: Record<string, unknown> = {};
@@ -289,6 +294,11 @@ export default function Editor() {
                       stroke: shapeStroke,
                       strokeWidth: shapeStrokeWidth,
                       opacity: shapeOpacity,
+                      dash: shapeDash,
+                      pointerLength: arrowPointerLength,
+                      pointerWidth: arrowPointerWidth,
+                      pointerAtBeginning: arrowPointerAtBeginning,
+                      pointerAtEnding: arrowPointerAtEnding,
                     });
                   }}
                   onClick={(e: any) => { if (activeTool !== 'pen' && activeTool !== 'shapes' && e.target === e.target.getStage()) setSelectedId(null); }}
@@ -316,7 +326,7 @@ export default function Editor() {
                       />
                     )}
                     {liveShapeAttrs && (() => {
-                      const { shapeType, x, y, width, height } = liveShapeAttrs;
+                      const { shapeType, x, y, width, height, points } = liveShapeAttrs;
                       const previewProps = {
                         fill: shapeFill,
                         stroke: shapeStroke,
@@ -328,6 +338,8 @@ export default function Editor() {
                       if (shapeType === 'ellipse') return <Circle x={x + width / 2} y={y + height / 2} radius={Math.min(width, height) / 2} {...previewProps} />;
                       if (shapeType === 'polygon') return <RegularPolygon x={x + width / 2} y={y + height / 2} sides={6} radius={Math.min(width, height) / 2} {...previewProps} />;
                       if (shapeType === 'star') { const r = Math.min(width, height) / 2; return <Star x={x + width / 2} y={y + height / 2} numPoints={5} outerRadius={r} innerRadius={r * 0.4} {...previewProps} />; }
+                      if (shapeType === 'line') return <Line points={points} {...previewProps} />;
+                      if (shapeType === 'arrow') return <Arrow points={points} pointerLength={10} pointerWidth={10} {...previewProps} />;
                       return null;
                     })()}
                   </Layer>
@@ -414,12 +426,18 @@ export default function Editor() {
                 stroke={shapeStroke}
                 strokeWidth={shapeStrokeWidth}
                 opacity={shapeOpacity}
+                dash={shapeDash}
                 recentColors={recentColors}
                 onChange={(updates) => {
                   if (updates.fill !== undefined) setShapeFill(updates.fill);
                   if (updates.stroke !== undefined) setShapeStroke(updates.stroke);
                   if (updates.strokeWidth !== undefined) setShapeStrokeWidth(updates.strokeWidth);
                   if (updates.opacity !== undefined) setShapeOpacity(updates.opacity);
+                  if (updates.dash !== undefined) setShapeDash(updates.dash);
+                  if (updates.pointerLength !== undefined) setArrowPointerLength(updates.pointerLength);
+                  if (updates.pointerWidth !== undefined) setArrowPointerWidth(updates.pointerWidth);
+                  if (updates.pointerAtBeginning !== undefined) setArrowPointerAtBeginning(updates.pointerAtBeginning);
+                  if (updates.pointerAtEnding !== undefined) setArrowPointerAtEnding(updates.pointerAtEnding);
                 }}
               />
             ) : selectedNode && selectedNode.className === 'Line' ? (
@@ -432,12 +450,35 @@ export default function Editor() {
                 recentColors={recentColors}
                 onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
               />
-            ) : selectedNode && ['Rect', 'Circle', 'RegularPolygon', 'Star'].includes(selectedNode.className) ? (
+            ) : selectedNode && ['Rect', 'Circle', 'RegularPolygon', 'Star', 'Arrow'].includes(selectedNode.className) ? (
               <ShapePropertiesSection
+                type={selectedNode.className}
                 fill={selectedNode.attrs?.fill || '#4D96FF'}
                 stroke={selectedNode.attrs?.stroke || '#1A1A1A'}
                 strokeWidth={selectedNode.attrs?.strokeWidth ?? 2}
                 opacity={selectedNode.attrs?.opacity ?? 1}
+                dash={selectedNode.attrs?.dash || []}
+                
+                width={selectedNode.attrs?.width}
+                height={selectedNode.attrs?.height}
+                radius={selectedNode.attrs?.radius}
+                innerRadius={selectedNode.attrs?.innerRadius}
+                outerRadius={selectedNode.attrs?.outerRadius}
+                numPoints={selectedNode.attrs?.numPoints}
+                sides={selectedNode.attrs?.sides}
+                points={selectedNode.attrs?.points}
+                
+                pointerLength={selectedNode.attrs?.pointerLength}
+                pointerWidth={selectedNode.attrs?.pointerWidth}
+                pointerAtBeginning={selectedNode.attrs?.pointerAtBeginning}
+                pointerAtEnding={selectedNode.attrs?.pointerAtEnding}
+
+                shadowColor={selectedNode.attrs?.shadowColor}
+                shadowBlur={selectedNode.attrs?.shadowBlur}
+                shadowOffsetX={selectedNode.attrs?.shadowOffsetX}
+                shadowOffsetY={selectedNode.attrs?.shadowOffsetY}
+                shadowOpacity={selectedNode.attrs?.shadowOpacity}
+
                 recentColors={recentColors}
                 onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
               />

@@ -108,3 +108,26 @@ export const IconShapes = () => (
     <path d="M3 21l3-5 3 5H3z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+export const IconChevronDown = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="6 9 12 15 18 9" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+export const IconLine = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <line x1="5" y1="19" x2="19" y2="5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const IconArrow = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+export const IconDash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <line x1="3" y1="12" x2="7" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="11" y1="12" x2="15" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="19" y1="12" x2="23" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
