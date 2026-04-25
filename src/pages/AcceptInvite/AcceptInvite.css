@@ -1,0 +1,207 @@
+/* ============================================
+   ACCEPT INVITE PAGE — Webster
+   ============================================ */
+
+.accept-invite-page {
+  min-height: calc(100vh - 60px);
+  background-color: #1A1A1A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Ambient background glow */
+.accept-invite-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(237, 233, 134, 0.06) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: accept-glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes accept-glow-pulse {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.08); }
+}
+
+/* Card */
+.accept-invite-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(37, 37, 37, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid #333;
+  border-radius: 24px;
+  padding: 52px 48px;
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(237, 233, 134, 0.04);
+  animation: accept-card-in 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+@keyframes accept-card-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Brand / Wordmark */
+.accept-invite-brand {
+  margin-bottom: 36px;
+}
+
+.accept-invite-wordmark {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, #EDE986 0%, #c8c44a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* State Container */
+.accept-invite-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Status Icons */
+.accept-status-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  animation: accept-icon-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes accept-icon-pop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.accept-status-icon--success {
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  color: #2ecc71;
+}
+
+.accept-status-icon--error {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  color: #e74c3c;
+}
+
+/* Spinner */
+.accept-spinner-wrap {
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.accept-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(237, 233, 134, 0.15);
+  border-top-color: #EDE986;
+  border-radius: 50%;
+  animation: accept-spin 0.75s linear infinite;
+}
+
+@keyframes accept-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Text */
+.accept-invite-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #E0E0E0;
+  margin: 0 0 12px;
+}
+
+.accept-invite-desc {
+  font-size: 0.9rem;
+  color: #888;
+  line-height: 1.65;
+  margin: 0 0 32px;
+  max-width: 340px;
+}
+
+.accept-invite-desc strong {
+  color: #E0E0E0;
+  font-weight: 600;
+}
+
+/* Actions */
+.accept-invite-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.accept-btn-primary {
+  padding: 13px 28px;
+  background: #EDE986;
+  color: #1A1A1A;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+
+.accept-btn-primary:hover {
+  background: #F8F495;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(237, 233, 134, 0.2);
+}
+
+.accept-btn-secondary {
+  padding: 13px 28px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+
+.accept-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #E0E0E0;
+  border-color: #444;
+}

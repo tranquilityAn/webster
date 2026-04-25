@@ -14,6 +14,7 @@ import './Editor.css';
 import { TopBar } from './components/TopBar';
 import { Toolbar } from './components/Toolbar';
 import { LayersPanel } from './components/LayersPanel';
+import { ShareModal } from './components/ShareModal';
 
 // Hooks
 import { useEditorNavigation } from './hooks/useEditorNavigation';
@@ -36,6 +37,8 @@ export default function Editor() {
   const [activeTool, setActiveTool] = useState('select');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeShape, setActiveShape] = useState<ShapeType>('ellipse');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   // Properties State
   const [shapeFill, setShapeFill] = useState('#4D96FF');
@@ -180,6 +183,19 @@ export default function Editor() {
     return () => { disconnect(); };
   }, [id, connect, disconnect]);
 
+  // 9. Fetch project ID for sharing
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/webster/v1/canvases/${id}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.data?.attributes?.project_id) {
+          setProjectId(data.data.attributes.project_id);
+        }
+      })
+      .catch(() => {});
+  }, [id]);
+
   // 9. Transformer Effect
   useEffect(() => {
     if (!trRef.current) return;
@@ -237,7 +253,7 @@ export default function Editor() {
         zoom={zoom}
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
-        onTestCommit={handleTestCommit}
+        onShare={() => setShowShareModal(true)}
       />
 
       <div className="editor-body">
@@ -514,6 +530,13 @@ export default function Editor() {
           </div>
         </aside>
       </div>
+
+      {showShareModal && projectId && (
+        <ShareModal
+          projectId={projectId}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

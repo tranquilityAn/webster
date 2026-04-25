@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../Register/Register.css';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { checkAuth } = useAuth();
+  const returnTo = new URLSearchParams(location.search).get('returnTo') || '/';
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [status, setStatus] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -31,7 +33,7 @@ export default function Login() {
       if (res.ok) {
         setStatus('Welcome back!');
         await checkAuth();
-        setTimeout(() => navigate('/'), 800);
+        setTimeout(() => navigate(returnTo), 800);
       } else {
         const errorData = await res.json().catch(() => null);
         setIsError(true);
