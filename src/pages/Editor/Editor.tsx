@@ -43,6 +43,7 @@ export default function Editor() {
   const [shapeStrokeWidth, setShapeStrokeWidth] = useState(2);
   const [shapeOpacity, setShapeOpacity] = useState(1);
   const [shapeDash, setShapeDash] = useState<number[]>([]);
+  const [shapeRotation, setShapeRotation] = useState(0);
   const [arrowPointerLength, setArrowPointerLength] = useState(10);
   const [arrowPointerWidth, setArrowPointerWidth] = useState(10);
   const [arrowPointerAtBeginning, setArrowPointerAtBeginning] = useState(false);
@@ -347,17 +348,18 @@ export default function Editor() {
                   <Layer>
                     <Transformer
                       ref={trRef}
-                      rotateEnabled={false}
+                      rotateEnabled={true}
+                      rotateAnchorOffset={50}
                       keepRatio={false}
-                      anchorSize={20}
-                      anchorCornerRadius={3}
-                      anchorStroke="#EDE986"
-                      anchorFill="#1A1A1A"
-                      anchorStrokeWidth={2}
+                      anchorSize={10}
+                      anchorCornerRadius={2}
+                      anchorStroke="#333333"
+                      anchorFill="#EDE986"
+                      anchorStrokeWidth={1}
                       borderStroke="#EDE986"
-                      borderStrokeWidth={1}
-                      borderDash={[6, 4]}
-                      padding={3}
+                      borderStrokeWidth={1.5}
+                      borderDash={[4, 4]}
+                      padding={5}
                     />
                   </Layer>
                 </Stage>
@@ -427,6 +429,7 @@ export default function Editor() {
                 strokeWidth={shapeStrokeWidth}
                 opacity={shapeOpacity}
                 dash={shapeDash}
+                rotation={shapeRotation}
                 recentColors={recentColors}
                 onChange={(updates) => {
                   if (updates.fill !== undefined) setShapeFill(updates.fill);
@@ -434,6 +437,7 @@ export default function Editor() {
                   if (updates.strokeWidth !== undefined) setShapeStrokeWidth(updates.strokeWidth);
                   if (updates.opacity !== undefined) setShapeOpacity(updates.opacity);
                   if (updates.dash !== undefined) setShapeDash(updates.dash);
+                  if (updates.rotation !== undefined) setShapeRotation(updates.rotation);
                   if (updates.pointerLength !== undefined) setArrowPointerLength(updates.pointerLength);
                   if (updates.pointerWidth !== undefined) setArrowPointerWidth(updates.pointerWidth);
                   if (updates.pointerAtBeginning !== undefined) setArrowPointerAtBeginning(updates.pointerAtBeginning);
@@ -447,6 +451,8 @@ export default function Editor() {
                 opacity={selectedNode.attrs?.opacity ?? 1}
                 lineCap={selectedNode.attrs?.lineCap || 'round'}
                 tension={selectedNode.attrs?.tension ?? 0}
+                dash={selectedNode.attrs?.dash || []}
+                rotation={selectedNode.attrs?.rotation || 0}
                 recentColors={recentColors}
                 onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
               />
@@ -458,6 +464,7 @@ export default function Editor() {
                 strokeWidth={selectedNode.attrs?.strokeWidth ?? 2}
                 opacity={selectedNode.attrs?.opacity ?? 1}
                 dash={selectedNode.attrs?.dash || []}
+                rotation={selectedNode.attrs?.rotation || 0}
                 
                 width={selectedNode.attrs?.width}
                 height={selectedNode.attrs?.height}

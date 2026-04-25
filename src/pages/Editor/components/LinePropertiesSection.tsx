@@ -28,6 +28,7 @@ interface LinePropertiesSectionProps {
   lineCap: string;
   tension: number;
   dash?: number[];
+  rotation?: number;
   recentColors: string[];
   onChange: (updates: any) => void;
   showPreview?: boolean;
@@ -40,6 +41,7 @@ export const LinePropertiesSection: React.FC<LinePropertiesSectionProps> = ({
   lineCap,
   tension,
   dash = [],
+  rotation = 0,
   recentColors,
   onChange,
   showPreview = false,
@@ -48,6 +50,15 @@ export const LinePropertiesSection: React.FC<LinePropertiesSectionProps> = ({
 
   return (
     <div className="draw-props">
+      {/* Dimensions (Rotation for Drawing) */}
+      <div className="draw-prop-grid" style={{ marginBottom: 12 }}>
+        <PropertyInput
+          label="Rotation"
+          value={Math.round(rotation)}
+          onChange={(v) => onChange({ rotation: v })}
+          unit="°"
+        />
+      </div>
       {/* Color */}
       <ColorPickerRow
         label="Stroke Color"

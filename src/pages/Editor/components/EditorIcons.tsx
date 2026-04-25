@@ -131,3 +131,9 @@ export const IconDash = () => (
     <line x1="19" y1="12" x2="23" y2="12" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+export const IconRotateHandle = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1.04 6.67 2.87" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M21 3v4h-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);

@@ -22,6 +22,7 @@ interface ShapePropertiesSectionProps {
   sides?: number;
   points?: number[];
   dash?: number[];
+  rotation?: number;
 
   // Arrow specific
   pointerLength?: number;
@@ -51,6 +52,7 @@ interface ShapePropertiesSectionProps {
     sides: number;
     points: number[];
     dash: number[];
+    rotation: number;
     pointerLength: number;
     pointerWidth: number;
     pointerAtBeginning: boolean;
@@ -78,6 +80,7 @@ export const ShapePropertiesSection: React.FC<ShapePropertiesSectionProps> = ({
   sides = 6,
   points = [],
   dash = [],
+  rotation = 0,
   pointerLength = 10,
   pointerWidth = 10,
   pointerAtBeginning = false,
@@ -183,6 +186,14 @@ export const ShapePropertiesSection: React.FC<ShapePropertiesSectionProps> = ({
               onChange={handleLengthChange}
             />
           )}
+          
+          <PropertyInput
+            label="Rotation"
+            value={Math.round(rotation)}
+            onChange={(v) => onChange({ rotation: v })}
+            unit="°"
+          />
+
           {type === 'Arrow' && (
             <div className="draw-prop-group" style={{ gridColumn: 'span 2', marginTop: 8 }}>
               <label className="draw-prop-label">Head Positions</label>
