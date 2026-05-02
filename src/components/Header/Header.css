@@ -70,3 +70,27 @@
   font-weight: 600;
   font-size: 1.1rem;
 }
+
+/* Clickable user area button */
+.header-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: background-color 0.2s;
+  font-family: inherit;
+}
+
+.header-user-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.header-user-btn .user-name {
+  color: #F5F5F5;
+  font-weight: 500;
+  font-size: 1rem;
+}

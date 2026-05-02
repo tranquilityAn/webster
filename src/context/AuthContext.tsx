@@ -34,7 +34,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/webster/v1/profiles/me');
       if (res.ok) {
         const data = await res.json();
-        setUser(data.data);
+        const profile = data.data;
+        // Also fetch email from accounts endpoint
+        let email: string | undefined;
+        try {
+          const accRes = await fetch('/webster/v1/accounts/me');
+          if (accRes.ok) {
+            const accData = await accRes.json();
+            email = accData.data?.attributes?.email;
+          }
+        } catch { /* ignore */ }
+
+        setUser({
+          id: profile.id,
+          attributes: {
+            username: profile.attributes?.username,
+            // server returns avatar_url (snake_case) — map to avatarUrl
+            avatarUrl: profile.attributes?.avatar_url,
+            avatarKey: profile.attributes?.avatar_key,
+            email,
+          },
+        });
       } else {
         setUser(null);
       }
