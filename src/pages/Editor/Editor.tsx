@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
+import { Op } from '@paranoideed/drawebster';
 import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star, Arrow } from 'react-konva';
 import { useCanvasStore } from '../../store/useCanvasStore';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
@@ -27,6 +28,7 @@ import { useEditorHotkeys } from './hooks/useEditorHotkeys';
 
 export default function Editor() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const { isConnected, snapshot, commits, error, connect, disconnect, sendCommit } = useCanvasStore();
 
   // 1. Navigation & Viewport
@@ -39,6 +41,12 @@ export default function Editor() {
   const [activeShape, setActiveShape] = useState<ShapeType>('ellipse');
   const [showShareModal, setShowShareModal] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+
+  // Template modal state
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templatePublic, setTemplatePublic] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Properties State
   const [shapeFill, setShapeFill] = useState('#4D96FF');
@@ -177,6 +185,35 @@ export default function Editor() {
     setSelectedId,
   });
 
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim() || !computedState) return;
+    setIsSavingTemplate(true);
+    try {
+      const response = await fetch('/webster/v1/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            type: 'template',
+            attributes: {
+              name: templateName,
+              body: computedState,
+              public: templatePublic
+            }
+          }
+        })
+      });
+      if (response.ok) {
+        setShowTemplateModal(false);
+        setTemplateName('');
+      }
+    } catch (err) {
+      console.error('Failed to save template', err);
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
   // 8. WebSocket Sync
   useEffect(() => {
     if (id) connect(id);
@@ -195,6 +232,72 @@ export default function Editor() {
       })
       .catch(() => {});
   }, [id]);
+
+
+
+  // 10. Apply Template if passed via location state
+  useEffect(() => {
+    const applyTemplate = async () => {
+      const templateId = location.state?.templateId;
+      if (!templateId || !isConnected || !computedState || commits.length > 0) {
+        // If no template ID, or not connected, or canvas already has commits, don't apply
+        return;
+      }
+      try {
+        const res = await fetch(`/webster/v1/templates/${templateId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const templateBody = data.data?.attributes?.body;
+          if (templateBody) {
+            const changes: any[] = [];
+            
+            // 1. Update canvas (stage) size
+            if (templateBody.attrs?.width || templateBody.attrs?.height) {
+              changes.push({
+                op: Op.UPDATE_STAGE,
+                props: {
+                  ...(templateBody.attrs.width ? { width: templateBody.attrs.width } : {}),
+                  ...(templateBody.attrs.height ? { height: templateBody.attrs.height } : {})
+                }
+              });
+            }
+
+            // 2. Add layers and nodes
+            if (templateBody.children) {
+              const layers = templateBody.children.filter((c: any) => c.className === 'Layer');
+              for (const layer of layers) {
+                const nodes = layer.children || [];
+                for (const node of nodes) {
+                  // Ensure nodes don't clash with existing layers
+                  if (node.className !== 'Transformer') {
+                    changes.push({
+                      op: Op.ADD,
+                      parentId: 'layer-1', // Default layer
+                      node: {
+                        ...node,
+                        attrs: {
+                          ...node.attrs,
+                          id: `${node.className}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        }
+                      }
+                    });
+                  }
+                }
+              }
+            }
+            if (changes.length > 0) {
+              sendCommit(changes);
+            }
+            // Clear state so we don't apply it again
+            window.history.replaceState({}, document.title);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to apply template', err);
+      }
+    };
+    applyTemplate();
+  }, [isConnected, commits.length, computedState, location.state?.templateId, sendCommit]);
 
   // 9. Transformer Effect
   useEffect(() => {
@@ -220,31 +323,6 @@ export default function Editor() {
     sendCommit([{ op: 'reorder', id: movedItemId, newIndex: newKonvaIndex }]);
   }, [computedState, sendCommit]);
 
-  const handleTestCommit = () => {
-    const existingRects = computedState?.children?.flatMap((c: any) => c.children || []).filter((n: any) => n.className === 'Rect') || [];
-    const rectName = `Rect ${existingRects.length + 1}`;
-    const randomColor = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
-    const x = Math.random() * 400 + 50;
-    const y = Math.random() * 300 + 50;
-    const width = Math.random() * 100 + 50;
-    const height = Math.random() * 100 + 50;
-
-    sendCommit([{
-      op: 'add',
-      parentId: 'layer-1',
-      node: {
-        className: 'Rect',
-        attrs: {
-          id: `rect-${Date.now()}`,
-          name: rectName,
-          x, y, width, height,
-          fill: randomColor,
-          draggable: true
-        }
-      }
-    }]);
-  };
-
   return (
     <div className="editor-wrapper">
       <TopBar 
@@ -254,6 +332,7 @@ export default function Editor() {
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
         onShare={() => setShowShareModal(true)}
+        onSaveAsTemplate={() => setShowTemplateModal(true)}
       />
 
       <div className="editor-body">
@@ -509,11 +588,11 @@ export default function Editor() {
               <>
                 <div className="prop-row">
                   <span className="prop-label">Width</span>
-                  <span className="prop-value">{snapshot.body?.attrs?.width ?? '—'}</span>
+                  <span className="prop-value">{computedState?.attrs?.width ?? snapshot.body?.attrs?.width ?? '—'}</span>
                 </div>
                 <div className="prop-row">
                   <span className="prop-label">Height</span>
-                  <span className="prop-value">{snapshot.body?.attrs?.height ?? '—'}</span>
+                  <span className="prop-value">{computedState?.attrs?.height ?? snapshot.body?.attrs?.height ?? '—'}</span>
                 </div>
                 <div className="prop-row">
                   <span className="prop-label">Version</span>
@@ -536,6 +615,54 @@ export default function Editor() {
           projectId={projectId}
           onClose={() => setShowShareModal(false)}
         />
+      )}
+
+      {/* Save as Template Modal */}
+      {showTemplateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 className="modal-title">Save as Template</h2>
+            <p className="modal-subtitle">Save the current canvas state as a template for future projects.</p>
+            
+            <div className="form-group" style={{ marginTop: 24 }}>
+              <label>Template Name</label>
+              <input
+                type="text"
+                className="modal-input"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="E.g., Instagram Post"
+                autoFocus
+              />
+            </div>
+            
+            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+              <input
+                type="checkbox"
+                id="template-public-checkbox"
+                checked={templatePublic}
+                onChange={(e) => setTemplatePublic(e.target.checked)}
+                style={{ width: 'auto', marginRight: 8, cursor: 'pointer' }}
+              />
+              <label htmlFor="template-public-checkbox" style={{ cursor: 'pointer', marginBottom: 0 }}>
+                Make this template public
+              </label>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: 32 }}>
+              <button className="cancel-btn" onClick={() => setShowTemplateModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="submit-btn"
+                onClick={handleSaveTemplate}
+                disabled={!templateName.trim() || isSavingTemplate}
+              >
+                {isSavingTemplate ? 'Saving...' : 'Save Template'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -137,3 +137,11 @@ export const IconRotateHandle = () => (
     <path d="M21 3v4h-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+export const IconDots = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="5" cy="12" r="2.5" />
+    <circle cx="12" cy="12" r="2.5" />
+    <circle cx="19" cy="12" r="2.5" />
+  </svg>
+);

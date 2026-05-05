@@ -25,6 +25,8 @@
   padding: 0 16px;
   flex-shrink: 0;
   gap: 12px;
+  position: relative;
+  z-index: 200;
 }
 
 .editor-topbar-left {
