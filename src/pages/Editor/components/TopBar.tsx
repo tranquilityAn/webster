@@ -49,49 +49,27 @@ export const TopBar: React.FC<TopBarProps> = ({
           style={{ backgroundColor: isConnected ? '#2ecc71' : '#e74c3c' }}
         />
         <span className="topbar-canvas-name">Canvas · {id?.slice(0, 8)}…</span>
-        <div className="topbar-menu-wrapper" style={{ position: 'relative' }} ref={menuRef}>
+        <div className="topbar-menu-wrapper" ref={menuRef}>
           <button 
             className="topbar-btn" 
             title="More options" 
             onClick={() => setShowMenu(!showMenu)}
-            style={{ marginLeft: 4 }}
           >
             <IconDots />
           </button>
           {showMenu && (
-             <div className="topbar-dropdown" style={{
-               position: 'absolute',
-               top: '100%',
-               left: 0,
-               marginTop: 8,
-               backgroundColor: '#252525',
-               border: '1px solid #333',
-               borderRadius: 8,
-               padding: 4,
-               minWidth: 160,
-               boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-               zIndex: 1000
-             }}>
+             <div className="topbar-dropdown">
                <button 
                  className="dropdown-item"
                  onClick={() => {
                    setShowMenu(false);
                    onSaveAsTemplate?.();
                  }}
-                 style={{
-                   width: '100%',
-                   textAlign: 'left',
-                   padding: '8px 12px',
-                   background: 'transparent',
-                   border: 'none',
-                   color: '#f5f5f5',
-                   cursor: 'pointer',
-                   borderRadius: 4,
-                   fontSize: '0.9rem'
-                 }}
-                 onMouseEnter={e => e.currentTarget.style.backgroundColor = '#333'}
-                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                >
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                   <rect x="9" y="9" width="6" height="6" />
+                 </svg>
                  Save as Template
                </button>
              </div>

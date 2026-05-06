@@ -4,9 +4,6 @@ import { Op } from '@paranoideed/drawebster';
 import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star, Arrow } from 'react-konva';
 import { useCanvasStore } from '../../store/useCanvasStore';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
-import { LinePropertiesSection } from './components/LinePropertiesSection';
-import { ShapePropertiesSection } from './components/ShapePropertiesSection';
-import { TextPropertiesSection } from './components/TextPropertiesSection';
 import { SHAPE_DEFS } from './Editor.constants';
 import type { ShapeType } from './Editor.constants';
 import { IconLayer } from './components/EditorIcons';
@@ -17,6 +14,9 @@ import { TopBar } from './components/TopBar';
 import { Toolbar } from './components/Toolbar';
 import { LayersPanel } from './components/LayersPanel';
 import { ShareModal } from './components/ShareModal';
+import { SaveTemplateModal } from './components/SaveTemplateModal';
+import { PropertiesPanel } from './components/PropertiesPanel';
+import { InlineTextEditor } from './components/InlineTextEditor';
 
 // Hooks
 import { useEditorNavigation } from './hooks/useEditorNavigation';
@@ -45,9 +45,6 @@ export default function Editor() {
 
   // Template modal state
   const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [templatePublic, setTemplatePublic] = useState(false);
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Properties State
   const [shapeFill, setShapeFill] = useState('#4D96FF');
@@ -82,7 +79,6 @@ export default function Editor() {
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingTextValue, setEditingTextValue] = useState('');
   const [editingTextStyle, setEditingTextStyle] = useState<CSSProperties>({});
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 3. Layout & Panels
   const { 
@@ -307,9 +303,6 @@ export default function Editor() {
       transform: `rotate(${rotation}deg)`,
       transformOrigin: 'top left',
     });
-
-    // Focus after render
-    setTimeout(() => textareaRef.current?.focus(), 0);
   }, []);
 
   const handleCloseTextEdit = useCallback(() => {
@@ -318,34 +311,6 @@ export default function Editor() {
     setEditingTextId(null);
   }, [editingTextId, editingTextValue, handleNodeChange]);
 
-  const handleSaveTemplate = async () => {
-    if (!templateName.trim() || !computedState) return;
-    setIsSavingTemplate(true);
-    try {
-      const response = await fetch('/webster/v1/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: {
-            type: 'template',
-            attributes: {
-              name: templateName,
-              body: computedState,
-              public: templatePublic
-            }
-          }
-        })
-      });
-      if (response.ok) {
-        setShowTemplateModal(false);
-        setTemplateName('');
-      }
-    } catch (err) {
-      console.error('Failed to save template', err);
-    } finally {
-      setIsSavingTemplate(false);
-    }
-  };
 
   // 8. WebSocket Sync
   useEffect(() => {
@@ -626,21 +591,11 @@ export default function Editor() {
 
                 {/* Inline textarea overlay for text editing */}
                 {editingTextId && (
-                  <textarea
-                    ref={textareaRef}
-                    className="text-edit-overlay"
+                  <InlineTextEditor
                     value={editingTextValue}
-                    onChange={(e) => setEditingTextValue(e.target.value)}
-                    onBlur={handleCloseTextEdit}
-                    onKeyDown={(e) => {
-                      // Cmd/Ctrl+Enter or Escape to confirm
-                      if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
-                        e.preventDefault();
-                        handleCloseTextEdit();
-                      }
-                    }}
+                    onChange={setEditingTextValue}
+                    onClose={handleCloseTextEdit}
                     style={editingTextStyle}
-                    autoFocus
                   />
                 )}
                 </>
@@ -686,181 +641,81 @@ export default function Editor() {
           <div className="properties-section" style={{ flex: 1 }}>
             <div className="panel-header" style={{ paddingLeft: 0, marginBottom: 10 }}>Properties</div>
 
-            {activeTool === 'pen' ? (
-              <LinePropertiesSection
-                color={brushColor}
-                width={brushSize}
-                opacity={brushOpacity}
-                lineCap={brushLineCap}
-                tension={brushTension}
-                recentColors={recentColors}
-                onChange={(updates) => {
-                  if (updates.stroke) setBrushColor(updates.stroke);
-                  if (updates.strokeWidth) setBrushSize(updates.strokeWidth);
-                  if (updates.opacity !== undefined) setBrushOpacity(updates.opacity);
-                  if (updates.lineCap) setBrushLineCap(updates.lineCap);
-                  if (updates.tension !== undefined) setBrushTension(updates.tension);
-                }}
-                showPreview
-              />
-            ) : activeTool === 'shapes' ? (
-              <ShapePropertiesSection
-                fill={shapeFill}
-                stroke={shapeStroke}
-                strokeWidth={shapeStrokeWidth}
-                opacity={shapeOpacity}
-                dash={shapeDash}
-                rotation={shapeRotation}
-                recentColors={recentColors}
-                onChange={(updates) => {
-                  if (updates.fill !== undefined) setShapeFill(updates.fill);
-                  if (updates.stroke !== undefined) setShapeStroke(updates.stroke);
-                  if (updates.strokeWidth !== undefined) setShapeStrokeWidth(updates.strokeWidth);
-                  if (updates.opacity !== undefined) setShapeOpacity(updates.opacity);
-                  if (updates.dash !== undefined) setShapeDash(updates.dash);
-                  if (updates.rotation !== undefined) setShapeRotation(updates.rotation);
-                  if (updates.pointerLength !== undefined) setArrowPointerLength(updates.pointerLength);
-                  if (updates.pointerWidth !== undefined) setArrowPointerWidth(updates.pointerWidth);
-                  if (updates.pointerAtBeginning !== undefined) setArrowPointerAtBeginning(updates.pointerAtBeginning);
-                  if (updates.pointerAtEnding !== undefined) setArrowPointerAtEnding(updates.pointerAtEnding);
-                }}
-              />
-            ) : activeTool === 'text' && !selectedNode ? (
-              // Default text tool properties (used when placing new text)
-              <TextPropertiesSection
-                fontSize={textFontSize}
-                fontFamily={textFontFamily}
-                fill={textColor}
-                opacity={textOpacity}
-                align={textAlign}
-                fontStyle={textFontStyle}
-                textDecoration={textDecoration}
-                letterSpacing={textLetterSpacing}
-                lineHeight={textLineHeight}
-                width={textWidth}
-                height={textHeight}
-                wrap={textWrap}
-                padding={textPadding}
-                stroke={textStroke}
-                strokeWidth={textStrokeWidth}
-                recentColors={recentColors}
-                onChange={(u) => {
-                  if (u.fontSize      !== undefined) setTextFontSize(u.fontSize);
-                  if (u.fontFamily    !== undefined) setTextFontFamily(u.fontFamily);
-                  if (u.fill         !== undefined) setTextColor(u.fill);
-                  if (u.opacity      !== undefined) setTextOpacity(u.opacity);
-                  if (u.align        !== undefined) setTextAlign(u.align as any);
-                  if (u.fontStyle    !== undefined) setTextFontStyle(u.fontStyle);
-                  if (u.textDecoration !== undefined) setTextDecoration(u.textDecoration);
-                  if (u.letterSpacing  !== undefined) setTextLetterSpacing(u.letterSpacing);
-                  if (u.lineHeight     !== undefined) setTextLineHeight(u.lineHeight);
-                  if (u.width          !== undefined) setTextWidth(u.width);
-                  if (u.height         !== undefined) setTextHeight(u.height);
-                  if (u.wrap           !== undefined) setTextWrap(u.wrap);
-                  if (u.padding        !== undefined) setTextPadding(u.padding);
-                  if (u.stroke         !== undefined) setTextStroke(u.stroke);
-                  if (u.strokeWidth    !== undefined) setTextStrokeWidth(u.strokeWidth);
-                }}
-              />
-            ) : selectedNode && selectedNode.className === 'Text' ? (
-              <TextPropertiesSection
-                fontSize={selectedNode.attrs?.fontSize ?? 32}
-                fontFamily={selectedNode.attrs?.fontFamily ?? 'Inter'}
-                fill={selectedNode.attrs?.fill ?? '#1A1A1A'}
-                opacity={selectedNode.attrs?.opacity ?? 1}
-                align={selectedNode.attrs?.align ?? 'left'}
-                fontStyle={selectedNode.attrs?.fontStyle ?? 'normal'}
-                textDecoration={selectedNode.attrs?.textDecoration ?? ''}
-                letterSpacing={selectedNode.attrs?.letterSpacing ?? 0}
-                lineHeight={selectedNode.attrs?.lineHeight ?? 1.2}
-                rotation={selectedNode.attrs?.rotation ?? 0}
-                shadowColor={selectedNode.attrs?.shadowColor}
-                shadowBlur={selectedNode.attrs?.shadowBlur}
-                shadowOffsetX={selectedNode.attrs?.shadowOffsetX}
-                shadowOffsetY={selectedNode.attrs?.shadowOffsetY}
-                shadowOpacity={selectedNode.attrs?.shadowOpacity}
-                width={selectedNode.attrs?.width ?? 'auto'}
-                height={selectedNode.attrs?.height ?? 'auto'}
-                wrap={selectedNode.attrs?.wrap ?? 'word'}
-                padding={selectedNode.attrs?.padding ?? 0}
-                stroke={selectedNode.attrs?.stroke ?? '#ffffff'}
-                strokeWidth={selectedNode.attrs?.strokeWidth ?? 0}
-                recentColors={recentColors}
-                onChange={(u) => {
-                  // If a property is set to 'auto', set it to null so JSON.stringify transmits it, resetting Konva's width/height
-                  const updates: any = { ...u };
-                  if (u.width === 'auto') updates.width = null;
-                  if (u.height === 'auto') updates.height = null;
-                  handleNodeChange(selectedNode.attrs.id, updates);
-                }}
-              />
-            ) : selectedNode && selectedNode.className === 'Line' ? (
-              <LinePropertiesSection
-                color={selectedNode.attrs?.stroke || '#000000'}
-                width={selectedNode.attrs?.strokeWidth || 1}
-                opacity={selectedNode.attrs?.opacity ?? 1}
-                lineCap={selectedNode.attrs?.lineCap || 'round'}
-                tension={selectedNode.attrs?.tension ?? 0}
-                dash={selectedNode.attrs?.dash || []}
-                rotation={selectedNode.attrs?.rotation || 0}
-                recentColors={recentColors}
-                onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
-              />
-            ) : selectedNode && ['Rect', 'Circle', 'RegularPolygon', 'Star', 'Arrow'].includes(selectedNode.className) ? (
-              <ShapePropertiesSection
-                type={selectedNode.className}
-                fill={selectedNode.attrs?.fill || '#4D96FF'}
-                stroke={selectedNode.attrs?.stroke || '#1A1A1A'}
-                strokeWidth={selectedNode.attrs?.strokeWidth ?? 2}
-                opacity={selectedNode.attrs?.opacity ?? 1}
-                dash={selectedNode.attrs?.dash || []}
-                rotation={selectedNode.attrs?.rotation || 0}
-                
-                width={selectedNode.attrs?.width}
-                height={selectedNode.attrs?.height}
-                radius={selectedNode.attrs?.radius}
-                innerRadius={selectedNode.attrs?.innerRadius}
-                outerRadius={selectedNode.attrs?.outerRadius}
-                numPoints={selectedNode.attrs?.numPoints}
-                sides={selectedNode.attrs?.sides}
-                points={selectedNode.attrs?.points}
-                
-                pointerLength={selectedNode.attrs?.pointerLength}
-                pointerWidth={selectedNode.attrs?.pointerWidth}
-                pointerAtBeginning={selectedNode.attrs?.pointerAtBeginning}
-                pointerAtEnding={selectedNode.attrs?.pointerAtEnding}
+            <PropertiesPanel
+              activeTool={activeTool}
+              selectedNode={selectedNode}
+              recentColors={recentColors}
+              
+              brushColor={brushColor}
+              brushSize={brushSize}
+              brushOpacity={brushOpacity}
+              brushLineCap={brushLineCap}
+              brushTension={brushTension}
+              onBrushChange={(updates) => {
+                if (updates.stroke) setBrushColor(updates.stroke);
+                if (updates.strokeWidth) setBrushSize(updates.strokeWidth);
+                if (updates.opacity !== undefined) setBrushOpacity(updates.opacity);
+                if (updates.lineCap) setBrushLineCap(updates.lineCap);
+                if (updates.tension !== undefined) setBrushTension(updates.tension);
+              }}
 
-                shadowColor={selectedNode.attrs?.shadowColor}
-                shadowBlur={selectedNode.attrs?.shadowBlur}
-                shadowOffsetX={selectedNode.attrs?.shadowOffsetX}
-                shadowOffsetY={selectedNode.attrs?.shadowOffsetY}
-                shadowOpacity={selectedNode.attrs?.shadowOpacity}
+              shapeFill={shapeFill}
+              shapeStroke={shapeStroke}
+              shapeStrokeWidth={shapeStrokeWidth}
+              shapeOpacity={shapeOpacity}
+              shapeDash={shapeDash}
+              shapeRotation={shapeRotation}
+              onShapeChange={(updates) => {
+                if (updates.fill !== undefined) setShapeFill(updates.fill);
+                if (updates.stroke !== undefined) setShapeStroke(updates.stroke);
+                if (updates.strokeWidth !== undefined) setShapeStrokeWidth(updates.strokeWidth);
+                if (updates.opacity !== undefined) setShapeOpacity(updates.opacity);
+                if (updates.dash !== undefined) setShapeDash(updates.dash);
+                if (updates.rotation !== undefined) setShapeRotation(updates.rotation);
+                if (updates.pointerLength !== undefined) setArrowPointerLength(updates.pointerLength);
+                if (updates.pointerWidth !== undefined) setArrowPointerWidth(updates.pointerWidth);
+                if (updates.pointerAtBeginning !== undefined) setArrowPointerAtBeginning(updates.pointerAtBeginning);
+                if (updates.pointerAtEnding !== undefined) setArrowPointerAtEnding(updates.pointerAtEnding);
+              }}
 
-                recentColors={recentColors}
-                onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
-              />
-            ) : snapshot ? (
-              <>
-                <div className="prop-row">
-                  <span className="prop-label">Width</span>
-                  <span className="prop-value">{computedState?.attrs?.width ?? snapshot.body?.attrs?.width ?? '—'}</span>
-                </div>
-                <div className="prop-row">
-                  <span className="prop-label">Height</span>
-                  <span className="prop-value">{computedState?.attrs?.height ?? snapshot.body?.attrs?.height ?? '—'}</span>
-                </div>
-                <div className="prop-row">
-                  <span className="prop-label">Version</span>
-                  <span className="prop-value">v{snapshot.version}</span>
-                </div>
-                <div className="prop-row">
-                  <span className="prop-label">Commits</span>
-                  <span className="prop-value">{commits.length}</span>
-                </div>
-              </>
-            ) : (
-              <p className="properties-placeholder">Select a layer to see properties</p>
-            )}
+              textFontSize={textFontSize}
+              textFontFamily={textFontFamily}
+              textColor={textColor}
+              textOpacity={textOpacity}
+              textAlign={textAlign}
+              textFontStyle={textFontStyle}
+              textDecoration={textDecoration}
+              textLetterSpacing={textLetterSpacing}
+              textLineHeight={textLineHeight}
+              textWidth={textWidth}
+              textHeight={textHeight}
+              textWrap={textWrap}
+              textPadding={textPadding}
+              textStroke={textStroke}
+              textStrokeWidth={textStrokeWidth}
+              onTextChange={(u) => {
+                if (u.fontSize      !== undefined) setTextFontSize(u.fontSize);
+                if (u.fontFamily    !== undefined) setTextFontFamily(u.fontFamily);
+                if (u.fill         !== undefined) setTextColor(u.fill);
+                if (u.opacity      !== undefined) setTextOpacity(u.opacity);
+                if (u.align        !== undefined) setTextAlign(u.align as any);
+                if (u.fontStyle    !== undefined) setTextFontStyle(u.fontStyle);
+                if (u.textDecoration !== undefined) setTextDecoration(u.textDecoration);
+                if (u.letterSpacing  !== undefined) setTextLetterSpacing(u.letterSpacing);
+                if (u.lineHeight     !== undefined) setTextLineHeight(u.lineHeight);
+                if (u.width          !== undefined) setTextWidth(u.width);
+                if (u.height         !== undefined) setTextHeight(u.height);
+                if (u.wrap           !== undefined) setTextWrap(u.wrap);
+                if (u.padding        !== undefined) setTextPadding(u.padding);
+                if (u.stroke         !== undefined) setTextStroke(u.stroke);
+                if (u.strokeWidth    !== undefined) setTextStrokeWidth(u.strokeWidth);
+              }}
+
+              handleNodeChange={handleNodeChange}
+              snapshot={snapshot}
+              computedState={computedState}
+              commits={commits}
+            />
           </div>
         </aside>
       </div>
@@ -873,51 +728,12 @@ export default function Editor() {
       )}
 
       {/* Save as Template Modal */}
-      {showTemplateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 className="modal-title">Save as Template</h2>
-            <p className="modal-subtitle">Save the current canvas state as a template for future projects.</p>
-            
-            <div className="form-group" style={{ marginTop: 24 }}>
-              <label>Template Name</label>
-              <input
-                type="text"
-                className="modal-input"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="E.g., Instagram Post"
-                autoFocus
-              />
-            </div>
-            
-            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-              <input
-                type="checkbox"
-                id="template-public-checkbox"
-                checked={templatePublic}
-                onChange={(e) => setTemplatePublic(e.target.checked)}
-                style={{ width: 'auto', marginRight: 8, cursor: 'pointer' }}
-              />
-              <label htmlFor="template-public-checkbox" style={{ cursor: 'pointer', marginBottom: 0 }}>
-                Make this template public
-              </label>
-            </div>
-
-            <div className="modal-actions" style={{ marginTop: 32 }}>
-              <button className="cancel-btn" onClick={() => setShowTemplateModal(false)}>
-                Cancel
-              </button>
-              <button
-                className="submit-btn"
-                onClick={handleSaveTemplate}
-                disabled={!templateName.trim() || isSavingTemplate}
-              >
-                {isSavingTemplate ? 'Saving...' : 'Save Template'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showTemplateModal && computedState && (
+        <SaveTemplateModal
+          computedState={computedState}
+          onClose={() => setShowTemplateModal(false)}
+          onSuccess={() => setShowTemplateModal(false)}
+        />
       )}
     </div>
   );
