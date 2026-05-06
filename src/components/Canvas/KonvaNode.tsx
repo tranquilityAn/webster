@@ -16,6 +16,7 @@ interface KonvaNodeProps {
   onChange?: (id: string, newProps: any) => void;
   onDblClick?: (id: string) => void;
   editingTextId?: string | null;
+  activeTool?: string;
 }
 
 /**
@@ -28,7 +29,7 @@ interface KonvaNodeProps {
  * - onTransformEnd normalises Konva's scaleX/scaleY back into real width/height
  * - onClick/onTap stop propagation so Stage deselect doesn't fire
  */
-export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect, onChange, onDblClick, editingTextId }) => {
+export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect, onChange, onDblClick, editingTextId, activeTool }) => {
   const { className, attrs, children } = node;
 
   // Map className to React-Konva component
@@ -54,8 +55,10 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
   };
 
   const handleSelect = (e: any) => {
-    // Prevent event from bubbling up to Stage's onClick (which deselects)
-    e.cancelBubble = true;
+    // Only cancel bubble if we are not using the text tool, OR if we clicked an existing Text node
+    if (activeTool !== 'text' || className === 'Text') {
+      e.cancelBubble = true;
+    }
     if (onSelect && attrs?.id) {
       onSelect(attrs.id);
     }
@@ -143,6 +146,7 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
             onChange={onChange}
             onDblClick={onDblClick}
             editingTextId={editingTextId}
+            activeTool={activeTool}
           />
         ))}
       </Component>
@@ -173,6 +177,7 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
           onChange={onChange}
           onDblClick={onDblClick}
           editingTextId={editingTextId}
+          activeTool={activeTool}
         />
       ))}
     </Component>

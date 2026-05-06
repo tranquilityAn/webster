@@ -518,6 +518,7 @@ export default function Editor() {
                       node={child} 
                       draggable={activeTool === 'select' && child.attrs?.id !== editingTextId}
                       editingTextId={editingTextId}
+                      activeTool={activeTool}
                       onSelect={(nodeId) => {
                         if (editingTextId) { handleCloseTextEdit(); return; }
                         if (activeTool === 'select') setSelectedId(nodeId);
