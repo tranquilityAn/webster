@@ -135,7 +135,7 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
                   </Draggable>
                 ))
               ) : (
-                <div className="layers-empty-state">No elements in current view</div>
+                <div className="layers-empty-state"></div>
               )}
               {provided.placeholder}
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, type CSSProperties } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Op } from '@paranoideed/drawebster';
 import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star, Arrow } from 'react-konva';
@@ -6,6 +6,7 @@ import { useCanvasStore } from '../../store/useCanvasStore';
 import { KonvaNode } from '../../components/Canvas/KonvaNode';
 import { LinePropertiesSection } from './components/LinePropertiesSection';
 import { ShapePropertiesSection } from './components/ShapePropertiesSection';
+import { TextPropertiesSection } from './components/TextPropertiesSection';
 import { SHAPE_DEFS } from './Editor.constants';
 import type { ShapeType } from './Editor.constants';
 import { IconLayer } from './components/EditorIcons';
@@ -60,6 +61,29 @@ export default function Editor() {
   const [arrowPointerAtBeginning, setArrowPointerAtBeginning] = useState(false);
   const [arrowPointerAtEnding, setArrowPointerAtEnding] = useState(true);
 
+  // Text tool default properties
+  const [textFontSize, setTextFontSize] = useState(32);
+  const [textFontFamily, setTextFontFamily] = useState('Inter');
+  const [textColor, setTextColor] = useState('#1A1A1A');
+  const [textOpacity, setTextOpacity] = useState(1);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('left');
+  const [textFontStyle, setTextFontStyle] = useState('normal');
+  const [textDecoration, setTextDecoration] = useState('');
+  const [textLetterSpacing, setTextLetterSpacing] = useState(0);
+  const [textLineHeight, setTextLineHeight] = useState(1.2);
+  const [textWidth, setTextWidth] = useState<number | 'auto'>('auto');
+  const [textHeight, setTextHeight] = useState<number | 'auto'>('auto');
+  const [textWrap, setTextWrap] = useState<'word' | 'char' | 'none'>('word');
+  const [textPadding, setTextPadding] = useState(0);
+  const [textStroke, setTextStroke] = useState('#ffffff');
+  const [textStrokeWidth, setTextStrokeWidth] = useState(0);
+
+  // Inline text-edit overlay state
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingTextValue, setEditingTextValue] = useState('');
+  const [editingTextStyle, setEditingTextStyle] = useState<CSSProperties>({});
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   // 3. Layout & Panels
   const { 
     rightPanelWidth, layersHeight, 
@@ -76,6 +100,7 @@ export default function Editor() {
   // 5. Refs
   const stageRef = useRef<any>(null);
   const trRef = useRef<any>(null);
+  const canvasFrameRef = useRef<HTMLDivElement>(null);
 
   // 6. Drawing Hook
   const {
@@ -184,6 +209,114 @@ export default function Editor() {
     selectedId,
     setSelectedId,
   });
+
+  // ── Text: place a new Text node on the canvas ──────────────────────────────
+  const handlePlaceText = useCallback((canvasX: number, canvasY: number) => {
+    const allNodes = computedState?.children?.flatMap((c: any) => c.children || []) || [];
+    const textNodes = allNodes.filter((n: any) => n.className === 'Text');
+    const textName = `Text ${textNodes.length + 1}`;
+    const newId = `text-${Date.now()}`;
+
+    sendCommit([{
+      op: 'add',
+      parentId: 'layer-1',
+      node: {
+        className: 'Text',
+        attrs: {
+          id: newId,
+          name: textName,
+          text: 'Text',
+          x: canvasX,
+          y: canvasY,
+          fontSize: textFontSize,
+          fontFamily: textFontFamily,
+          fill: textColor,
+          opacity: textOpacity,
+          align: textAlign,
+          fontStyle: textFontStyle,
+          textDecoration: textDecoration,
+          letterSpacing: textLetterSpacing,
+          lineHeight: textLineHeight,
+          width: textWidth === 'auto' ? undefined : textWidth,
+          height: textHeight === 'auto' ? undefined : textHeight,
+          wrap: textWrap,
+          padding: textPadding,
+          stroke: textStrokeWidth > 0 ? textStroke : undefined,
+          strokeWidth: textStrokeWidth > 0 ? textStrokeWidth : undefined,
+          draggable: true,
+        },
+      },
+    }]);
+
+    setTimeout(() => {
+      setActiveTool('select');
+      setSelectedId(newId);
+    }, 50);
+  }, [
+    computedState, sendCommit,
+    textFontSize, textFontFamily, textColor, textOpacity,
+    textAlign, textFontStyle, textDecoration, textLetterSpacing, textLineHeight,
+    textWidth, textHeight, textWrap, textPadding, textStroke, textStrokeWidth,
+  ]);
+
+  // ── Text: open inline textarea for editing ────────────────────────────────
+  const handleOpenTextEdit = useCallback((nodeId: string) => {
+    if (!stageRef.current) return;
+
+    const konvaNode = stageRef.current.findOne(`#${nodeId}`);
+    if (!konvaNode) return;
+
+    // Get unscaled coordinates relative to the Stage/parent container
+    const absPos = konvaNode.getAbsolutePosition();
+    const width  = Math.max(konvaNode.width()  || 200, 120);
+    const height = Math.max(konvaNode.height() || 40, 40);
+
+    const attrs = konvaNode.attrs || {};
+    const fontSize   = attrs.fontSize   || 32;
+    const fontFamily = attrs.fontFamily  || 'Inter';
+    const color      = attrs.fill        || '#1A1A1A';
+    const fontStyle  = attrs.fontStyle   || 'normal';
+    const align      = attrs.align       || 'left';
+    const letterSpacing = attrs.letterSpacing || 0;
+    const lineHeight    = attrs.lineHeight    || 1.2;
+    const decoration    = attrs.textDecoration || '';
+    const rotation      = attrs.rotation       || 0;
+
+    const padding       = attrs.padding        || 0;
+
+    const isBold   = fontStyle.includes('bold');
+    const isItalic = fontStyle.includes('italic');
+
+    setEditingTextId(nodeId);
+    setEditingTextValue(attrs.text || '');
+    setEditingTextStyle({
+      left: absPos.x,
+      top: absPos.y,
+      width,
+      minHeight: height,
+      fontSize: `${fontSize}px`,
+      fontFamily,
+      color,
+      fontWeight: isBold   ? 'bold'   : 'normal',
+      fontStyle:  isItalic ? 'italic' : 'normal',
+      textDecoration: decoration,
+      textAlign: align as any,
+      letterSpacing: `${letterSpacing}px`,
+      lineHeight,
+      padding: `${padding}px`,
+      transform: `rotate(${rotation}deg)`,
+      transformOrigin: 'top left',
+    });
+
+    // Focus after render
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, []);
+
+  const handleCloseTextEdit = useCallback(() => {
+    if (!editingTextId) return;
+    handleNodeChange(editingTextId, { text: editingTextValue || 'Text' });
+    setEditingTextId(null);
+  }, [editingTextId, editingTextValue, handleNodeChange]);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim() || !computedState) return;
@@ -302,14 +435,15 @@ export default function Editor() {
   // 9. Transformer Effect
   useEffect(() => {
     if (!trRef.current) return;
-    if (!selectedId || !stageRef.current || activeTool !== 'select') {
+    // Hide transformer while editing text inline
+    if (!selectedId || !stageRef.current || activeTool !== 'select' || editingTextId) {
       trRef.current.nodes([]);
       return;
     }
     const node = stageRef.current.findOne(`#${selectedId}`);
     trRef.current.nodes(node && node.getType() !== 'Layer' ? [node] : []);
     trRef.current.getLayer()?.batchDraw();
-  }, [selectedId, displayState, activeTool]);
+  }, [selectedId, displayState, activeTool, editingTextId]);
 
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination || result.destination.index === result.source.index) return;
@@ -350,33 +484,38 @@ export default function Editor() {
           }}
         />
 
-        <main className="editor-canvas-area" ref={canvasAreaRef}>
+        <main className="editor-canvas-area" ref={canvasAreaRef} style={{ position: 'relative' }}>
           {error && <div className="editor-error-bar">{error}</div>}
           <div
             className="editor-canvas-frame"
+            ref={canvasFrameRef}
             style={{ 
               width: (computedState?.attrs?.width || 1280) * zoom, 
               height: (computedState?.attrs?.height || 720) * zoom,
               overflow: 'hidden',
               flexShrink: 0,
               transform: `translate(${pan.x}px, ${pan.y}px)`,
+              position: 'relative',
             }}
           >
             <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', display: 'block' }}>
               {isConnected && computedState ? (
+                <>
                 <Stage 
                   width={computedState.attrs?.width || 1280} 
                   height={computedState.attrs?.height || 720}
                   ref={stageRef}
-                  style={{ cursor: (activeTool === 'pen' || activeTool === 'shapes') ? 'crosshair' : 'default' }}
+                  style={{ cursor: (activeTool === 'pen' || activeTool === 'shapes' || activeTool === 'text') ? 'crosshair' : 'default' }}
                   onMouseDown={(e: any) => {
                     if (activeTool === 'pen') {
                       handleDrawMouseDown(e);
                     } else if (activeTool === 'shapes') {
                       handleShapeMouseDown(e, activeShape);
                     } else if (e.target === e.target.getStage()) {
-                      setSelectedId(null);
-                      startPanning(e.evt.clientX, e.evt.clientY);
+                      if (activeTool !== 'text') {
+                        setSelectedId(null);
+                        startPanning(e.evt.clientX, e.evt.clientY);
+                      }
                     }
                   }}
                   onMouseMove={(e: any) => {
@@ -397,15 +536,41 @@ export default function Editor() {
                       pointerAtEnding: arrowPointerAtEnding,
                     });
                   }}
-                  onClick={(e: any) => { if (activeTool !== 'pen' && activeTool !== 'shapes' && e.target === e.target.getStage()) setSelectedId(null); }}
+                  onClick={(e: any) => {
+                    // Close inline edit on stage click
+                    if (editingTextId) { handleCloseTextEdit(); return; }
+                    if (activeTool === 'text') {
+                      const pos = e.target.getStage().getPointerPosition();
+                      if (pos) handlePlaceText(pos.x, pos.y);
+                    } else if (activeTool !== 'pen' && activeTool !== 'shapes' && e.target === e.target.getStage()) {
+                      setSelectedId(null);
+                    }
+                  }}
                 >
                   {displayState?.children?.map((child: any, idx: number) => (
                     <KonvaNode 
                       key={child.attrs?.id || `node-${idx}`} 
                       node={child} 
-                      draggable={activeTool === 'select'}
-                      onSelect={(nodeId) => { if (activeTool === 'select') setSelectedId(nodeId); }}
+                      draggable={activeTool === 'select' && child.attrs?.id !== editingTextId}
+                      editingTextId={editingTextId}
+                      onSelect={(nodeId) => {
+                        if (editingTextId) { handleCloseTextEdit(); return; }
+                        if (activeTool === 'select') setSelectedId(nodeId);
+                        if (activeTool === 'text') {
+                          // clicking an existing text node while text tool is active selects it
+                          setActiveTool('select');
+                          setSelectedId(nodeId);
+                        }
+                      }}
                       onChange={handleNodeChange}
+                      onDblClick={(nodeId) => {
+                        // Open inline editing on double-click for Text nodes
+                        const n = computedState?.children?.flatMap((c: any) => c.children || []).find((x: any) => x.attrs?.id === nodeId);
+                        if (n?.className === 'Text') {
+                          setSelectedId(nodeId);
+                          handleOpenTextEdit(nodeId);
+                        }
+                      }}
                     />
                   ))}
 
@@ -458,6 +623,27 @@ export default function Editor() {
                     />
                   </Layer>
                 </Stage>
+
+                {/* Inline textarea overlay for text editing */}
+                {editingTextId && (
+                  <textarea
+                    ref={textareaRef}
+                    className="text-edit-overlay"
+                    value={editingTextValue}
+                    onChange={(e) => setEditingTextValue(e.target.value)}
+                    onBlur={handleCloseTextEdit}
+                    onKeyDown={(e) => {
+                      // Cmd/Ctrl+Enter or Escape to confirm
+                      if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
+                        e.preventDefault();
+                        handleCloseTextEdit();
+                      }
+                    }}
+                    style={editingTextStyle}
+                    autoFocus
+                  />
+                )}
+                </>
               ) : (
                 <div className="canvas-placeholder">
                   <IconLayer />
@@ -537,6 +723,75 @@ export default function Editor() {
                   if (updates.pointerWidth !== undefined) setArrowPointerWidth(updates.pointerWidth);
                   if (updates.pointerAtBeginning !== undefined) setArrowPointerAtBeginning(updates.pointerAtBeginning);
                   if (updates.pointerAtEnding !== undefined) setArrowPointerAtEnding(updates.pointerAtEnding);
+                }}
+              />
+            ) : activeTool === 'text' && !selectedNode ? (
+              // Default text tool properties (used when placing new text)
+              <TextPropertiesSection
+                fontSize={textFontSize}
+                fontFamily={textFontFamily}
+                fill={textColor}
+                opacity={textOpacity}
+                align={textAlign}
+                fontStyle={textFontStyle}
+                textDecoration={textDecoration}
+                letterSpacing={textLetterSpacing}
+                lineHeight={textLineHeight}
+                width={textWidth}
+                height={textHeight}
+                wrap={textWrap}
+                padding={textPadding}
+                stroke={textStroke}
+                strokeWidth={textStrokeWidth}
+                recentColors={recentColors}
+                onChange={(u) => {
+                  if (u.fontSize      !== undefined) setTextFontSize(u.fontSize);
+                  if (u.fontFamily    !== undefined) setTextFontFamily(u.fontFamily);
+                  if (u.fill         !== undefined) setTextColor(u.fill);
+                  if (u.opacity      !== undefined) setTextOpacity(u.opacity);
+                  if (u.align        !== undefined) setTextAlign(u.align as any);
+                  if (u.fontStyle    !== undefined) setTextFontStyle(u.fontStyle);
+                  if (u.textDecoration !== undefined) setTextDecoration(u.textDecoration);
+                  if (u.letterSpacing  !== undefined) setTextLetterSpacing(u.letterSpacing);
+                  if (u.lineHeight     !== undefined) setTextLineHeight(u.lineHeight);
+                  if (u.width          !== undefined) setTextWidth(u.width);
+                  if (u.height         !== undefined) setTextHeight(u.height);
+                  if (u.wrap           !== undefined) setTextWrap(u.wrap);
+                  if (u.padding        !== undefined) setTextPadding(u.padding);
+                  if (u.stroke         !== undefined) setTextStroke(u.stroke);
+                  if (u.strokeWidth    !== undefined) setTextStrokeWidth(u.strokeWidth);
+                }}
+              />
+            ) : selectedNode && selectedNode.className === 'Text' ? (
+              <TextPropertiesSection
+                fontSize={selectedNode.attrs?.fontSize ?? 32}
+                fontFamily={selectedNode.attrs?.fontFamily ?? 'Inter'}
+                fill={selectedNode.attrs?.fill ?? '#1A1A1A'}
+                opacity={selectedNode.attrs?.opacity ?? 1}
+                align={selectedNode.attrs?.align ?? 'left'}
+                fontStyle={selectedNode.attrs?.fontStyle ?? 'normal'}
+                textDecoration={selectedNode.attrs?.textDecoration ?? ''}
+                letterSpacing={selectedNode.attrs?.letterSpacing ?? 0}
+                lineHeight={selectedNode.attrs?.lineHeight ?? 1.2}
+                rotation={selectedNode.attrs?.rotation ?? 0}
+                shadowColor={selectedNode.attrs?.shadowColor}
+                shadowBlur={selectedNode.attrs?.shadowBlur}
+                shadowOffsetX={selectedNode.attrs?.shadowOffsetX}
+                shadowOffsetY={selectedNode.attrs?.shadowOffsetY}
+                shadowOpacity={selectedNode.attrs?.shadowOpacity}
+                width={selectedNode.attrs?.width ?? 'auto'}
+                height={selectedNode.attrs?.height ?? 'auto'}
+                wrap={selectedNode.attrs?.wrap ?? 'word'}
+                padding={selectedNode.attrs?.padding ?? 0}
+                stroke={selectedNode.attrs?.stroke ?? '#ffffff'}
+                strokeWidth={selectedNode.attrs?.strokeWidth ?? 0}
+                recentColors={recentColors}
+                onChange={(u) => {
+                  // If a property is set to 'auto', set it to null so JSON.stringify transmits it, resetting Konva's width/height
+                  const updates: any = { ...u };
+                  if (u.width === 'auto') updates.width = null;
+                  if (u.height === 'auto') updates.height = null;
+                  handleNodeChange(selectedNode.attrs.id, updates);
                 }}
               />
             ) : selectedNode && selectedNode.className === 'Line' ? (

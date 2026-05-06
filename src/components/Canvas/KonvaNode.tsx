@@ -14,6 +14,8 @@ interface KonvaNodeProps {
   draggable?: boolean;
   onSelect?: (id: string) => void;
   onChange?: (id: string, newProps: any) => void;
+  onDblClick?: (id: string) => void;
+  editingTextId?: string | null;
 }
 
 /**
@@ -26,7 +28,7 @@ interface KonvaNodeProps {
  * - onTransformEnd normalises Konva's scaleX/scaleY back into real width/height
  * - onClick/onTap stop propagation so Stage deselect doesn't fire
  */
-export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect, onChange }) => {
+export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect, onChange, onDblClick, editingTextId }) => {
   const { className, attrs, children } = node;
 
   // Map className to React-Konva component
@@ -59,19 +61,26 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
     }
   };
 
+  const handleDblClick = (e: any) => {
+    e.cancelBubble = true;
+    if (onDblClick && attrs?.id) {
+      onDblClick(attrs.id);
+    }
+  };
+
   /**
-   * After a Transformer resize, Konva mutates scaleX / scaleY on the node
-   * but keeps width/height at the original value.
-   *
-   * The canonical approach is to:
-   *   1. Read the raw node dimensions and current scale.
-   *   2. Compute the real pixel size = dimension × scale.
-   *   3. Reset scale to 1 on the node so Konva doesn't double-apply it.
-   *   4. Persist { x, y, width, height, scaleX: 1, scaleY: 1 } to the server.
-   *
-   * This works for Rect, Circle (uses radiusX/radiusY indirectly via width),
-   * Text, Image and most other shapes.
-   */
+    * After a Transformer resize, Konva mutates scaleX / scaleY on the node
+    * but keeps width/height at the original value.
+    *
+    * The canonical approach is to:
+    *   1. Read the raw node dimensions and current scale.
+    *   2. Compute the real pixel size = dimension × scale.
+    *   3. Reset scale to 1 on the node so Konva doesn't double-apply it.
+    *   4. Persist { x, y, width, height, scaleX: 1, scaleY: 1 } to the server.
+    *
+    * This works for Rect, Circle (uses radiusX/radiusY indirectly via width),
+    * Text, Image and most other shapes.
+    */
   const handleTransformEnd = (e: any) => {
     e.cancelBubble = true;
     if (!onChange || !attrs?.id) return;
@@ -132,6 +141,8 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
             draggable={draggable}
             onSelect={onSelect}
             onChange={onChange}
+            onDblClick={onDblClick}
+            editingTextId={editingTextId}
           />
         ))}
       </Component>
@@ -140,13 +151,17 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
 
   // Leaf shape (Rect, Circle, Text, etc.) — spread attrs first, then
   // override with our controlled event props so they always win.
+  const isEditingThis = attrs?.id && attrs.id === editingTextId;
+
   return (
     <Component
       {...attrs}
+      visible={!isEditingThis}
       draggable={draggable ?? false}
       onDragEnd={handleDragEnd}
       onClick={handleSelect}
       onTap={handleSelect}
+      onDblClick={handleDblClick}
       onTransformEnd={handleTransformEnd}
     >
       {children?.map((child, index) => (
@@ -156,6 +171,8 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
           draggable={draggable}
           onSelect={onSelect}
           onChange={onChange}
+          onDblClick={onDblClick}
+          editingTextId={editingTextId}
         />
       ))}
     </Component>
