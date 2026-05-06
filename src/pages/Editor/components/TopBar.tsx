@@ -9,6 +9,10 @@ interface TopBarProps {
   onZoomOut: () => void;
   onShare: () => void;
   onSaveAsTemplate?: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -19,6 +23,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   onZoomOut,
   onShare,
   onSaveAsTemplate,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -36,10 +44,22 @@ export const TopBar: React.FC<TopBarProps> = ({
   return (
     <div className="editor-topbar">
       <div className="editor-topbar-left">
-        <button className="topbar-btn" title="Undo" onClick={() => {}}>
+        <button
+          className="topbar-btn"
+          title="Undo (Ctrl+Z)"
+          onClick={onUndo}
+          disabled={!canUndo}
+          style={{ opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'default' }}
+        >
           <IconUndo />
         </button>
-        <button className="topbar-btn" title="Redo" onClick={() => {}}>
+        <button
+          className="topbar-btn"
+          title="Redo (Ctrl+Shift+Z)"
+          onClick={onRedo}
+          disabled={!canRedo}
+          style={{ opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'default' }}
+        >
           <IconRedo />
         </button>
         <div className="topbar-divider" />

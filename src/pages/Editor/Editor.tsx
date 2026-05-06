@@ -30,11 +30,16 @@ import { useEditorHotkeys } from './hooks/useEditorHotkeys';
 export default function Editor() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const { isConnected, snapshot, commits, error, connect, disconnect, sendCommit } = useCanvasStore();
+  const { isConnected, snapshot, commits, headNumber, error, connect, disconnect, sendCommit, undo, redo } = useCanvasStore();
 
   // 1. Navigation & Viewport
   const { zoom, pan, setZoom, startPanning, zoomIn, zoomOut } = useEditorNavigation();
-  const { canvasAreaRef } = useEditorHotkeys({ setZoom });
+
+  // Derived undo/redo availability
+  const canUndo = commits.length > 0 && commits[0].number < headNumber;
+  const canRedo = commits.length > 0 && commits[commits.length - 1].number > headNumber;
+
+  const { canvasAreaRef } = useEditorHotkeys({ setZoom, onUndo: undo, onRedo: redo });
 
   // 2. Editor UI State
   const [activeTool, setActiveTool] = useState('select');
@@ -91,7 +96,7 @@ export default function Editor() {
   const {
     computedState, displayState, rootLayers,
     selectedNode, handleNodeChange
-  } = useEditorCanvasState({ snapshot, commits, sendCommit, selectedId });
+  } = useEditorCanvasState({ snapshot, commits, headNumber, sendCommit, selectedId });
 
   // 5. Refs
   const stageRef = useRef<any>(null);
@@ -432,6 +437,10 @@ export default function Editor() {
         onZoomOut={zoomOut}
         onShare={() => setShowShareModal(true)}
         onSaveAsTemplate={() => setShowTemplateModal(true)}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       <div className="editor-body">

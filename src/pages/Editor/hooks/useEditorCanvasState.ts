@@ -4,15 +4,20 @@ import { getComputedCanvasState } from '../../../utils/canvasUtils';
 interface UseEditorCanvasStateProps {
   snapshot: any;
   commits: any[];
+  headNumber: number;
   sendCommit: (changes: any[]) => void;
   selectedId: string | null;
 }
 
-export function useEditorCanvasState({ snapshot, commits, sendCommit, selectedId }: UseEditorCanvasStateProps) {
+export function useEditorCanvasState({ snapshot, commits, headNumber, sendCommit, selectedId }: UseEditorCanvasStateProps) {
   const localPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
 
-  // 1. Compute physical state from snapshot + commits
-  const computedState = useMemo(() => getComputedCanvasState(snapshot, commits), [snapshot, commits]);
+  // 1. Compute physical state from snapshot + commits up to headNumber
+  const visibleCommits = useMemo(() => {
+    return commits.filter((c) => c.number <= headNumber);
+  }, [commits, headNumber]);
+
+  const computedState = useMemo(() => getComputedCanvasState(snapshot, visibleCommits), [snapshot, visibleCommits]);
 
   // 2. Compute display state (with optimistic local updates for smooth dragging)
   const displayState = useMemo(() => {
