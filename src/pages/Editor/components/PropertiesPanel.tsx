@@ -220,11 +220,23 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <>
           <div className="prop-row">
             <span className="prop-label">Width</span>
-            <span className="prop-value">{computedState?.attrs?.width ?? snapshot.body?.attrs?.width ?? '—'}</span>
+            <span className="prop-value">
+              {computedState?.attrs?.width !== undefined 
+                ? Math.round(computedState.attrs.width) 
+                : snapshot.body?.attrs?.width !== undefined 
+                  ? Math.round(snapshot.body.attrs.width) 
+                  : '—'}
+            </span>
           </div>
           <div className="prop-row">
             <span className="prop-label">Height</span>
-            <span className="prop-value">{computedState?.attrs?.height ?? snapshot.body?.attrs?.height ?? '—'}</span>
+            <span className="prop-value">
+              {computedState?.attrs?.height !== undefined 
+                ? Math.round(computedState.attrs.height) 
+                : snapshot.body?.attrs?.height !== undefined 
+                  ? Math.round(snapshot.body.attrs.height) 
+                  : '—'}
+            </span>
           </div>
           <div className="prop-row">
             <span className="prop-label">Version</span>
