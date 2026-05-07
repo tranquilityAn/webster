@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, type CSSProperties } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef, type CSSProperties } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Op } from '@paranoideed/drawebster';
 import { Stage, Layer, Transformer, Line, Rect, Circle, RegularPolygon, Star, Arrow } from 'react-konva';
