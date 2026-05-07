@@ -26,6 +26,7 @@ import { useLayerActions } from './hooks/useLayerActions';
 import { useEditorLayout } from './hooks/useEditorLayout';
 import { useEditorCanvasState } from './hooks/useEditorCanvasState';
 import { useEditorHotkeys } from './hooks/useEditorHotkeys';
+import { usePositioning } from './hooks/usePositioning';
 
 export default function Editor() {
   const { id } = useParams<{ id: string }>();
@@ -97,6 +98,42 @@ export default function Editor() {
     computedState, displayState, rootLayers,
     selectedNode, handleNodeChange
   } = useEditorCanvasState({ snapshot, commits, headNumber, sendCommit, selectedId });
+
+  // 4b. Positioning Module
+  const positionableObjects = useMemo(() => {
+    const allNodes: any[] = computedState?.children?.flatMap((c: any) => c.children || []) || [];
+    return allNodes.map(n => ({
+      id: n.attrs.id,
+      x: n.attrs.x ?? 0,
+      y: n.attrs.y ?? 0,
+      width: n.attrs.width ?? (n.attrs.radius ? n.attrs.radius * 2 : 0),
+      height: n.attrs.height ?? (n.attrs.radius ? n.attrs.radius * 2 : 0),
+      rotation: n.attrs.rotation ?? 0,
+    }));
+  }, [computedState]);
+
+  const positioning = usePositioning({
+    objects: positionableObjects,
+    selectedIds: useMemo(() => new Set(selectedId ? [selectedId] : []), [selectedId]),
+    onCommit: (updates) => {
+      const changes = updates.map(u => ({ op: 'update', id: u.id, props: { x: u.x, y: u.y } }));
+      sendCommit(changes);
+    }
+  });
+
+  const handleNodeDragMove = useCallback((nodeId: string, node: any) => {
+    if (activeTool !== 'select') return;
+    const w = node.width() || (node.radius() ? node.radius() * 2 : 0);
+    const h = node.height() || (node.radius() ? node.radius() * 2 : 0);
+    const result = positioning.snapDrag(nodeId, node.x(), node.y(), w, h);
+    // Apply snapping visually during drag
+    node.x(result.x);
+    node.y(result.y);
+  }, [activeTool, positioning]);
+
+  const handleNodeDragEnd = useCallback((_nodeId: string) => {
+    positioning.clearGuides();
+  }, [positioning]);
 
   // 5. Refs
   const stageRef = useRef<any>(null);
@@ -546,6 +583,8 @@ export default function Editor() {
                           handleOpenTextEdit(nodeId);
                         }
                       }}
+                      onDragMove={handleNodeDragMove}
+                      onDragEndCallback={handleNodeDragEnd}
                     />
                   ))}
 
@@ -580,12 +619,21 @@ export default function Editor() {
                     })()}
                   </Layer>
 
+                  <Layer listening={false}>
+                    {positioning.guides.map((g, i) =>
+                      g.type === 'vertical'
+                        ? <Line key={`guide-${i}`} points={[g.x, g.yStart, g.x, g.yEnd]} stroke="#EDE986" strokeWidth={1} dash={[4, 4]} />
+                        : <Line key={`guide-${i}`} points={[g.xStart, g.y, g.xEnd, g.y]} stroke="#EDE986" strokeWidth={1} dash={[4, 4]} />
+                    )}
+                  </Layer>
+
                   <Layer>
                     <Transformer
                       ref={trRef}
                       rotateEnabled={true}
                       rotateAnchorOffset={50}
                       keepRatio={false}
+                      ignoreStroke={true}
                       anchorSize={10}
                       anchorCornerRadius={2}
                       anchorStroke="#333333"
@@ -595,6 +643,41 @@ export default function Editor() {
                       borderStrokeWidth={1.5}
                       borderDash={[4, 4]}
                       padding={5}
+                      boundBoxFunc={(oldBox, newBox) => {
+                        // Skip snapping for rotated objects
+                        if (!selectedId || Math.abs(newBox.rotation ?? 0) > 0.01) {
+                          return newBox;
+                        }
+
+                        const anchor = trRef.current?.getActiveAnchor();
+                        const padding = 5; // Matches the padding prop
+
+                        // Now that ignoreStroke={true}, newBox.x/y/width/height 
+                        // represent the path + padding, which matches our attrs + padding.
+                        const nodeBox = {
+                          x: newBox.x + padding,
+                          y: newBox.y + padding,
+                          width: newBox.width - padding * 2,
+                          height: newBox.height - padding * 2,
+                        };
+
+                        const snappedNodeBox = positioning.snapResize(
+                          selectedId,
+                          nodeBox,
+                          anchor
+                        );
+
+                        return {
+                          x: snappedNodeBox.x - padding,
+                          y: snappedNodeBox.y - padding,
+                          width: snappedNodeBox.width + padding * 2,
+                          height: snappedNodeBox.height + padding * 2,
+                          rotation: newBox.rotation
+                        };
+                      }}
+                      onTransformEnd={() => {
+                        positioning.clearGuides();
+                      }}
                     />
                   </Layer>
                 </Stage>

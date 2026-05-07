@@ -17,6 +17,8 @@ interface KonvaNodeProps {
   onDblClick?: (id: string) => void;
   editingTextId?: string | null;
   activeTool?: string;
+  onDragMove?: (id: string, node: any) => void;
+  onDragEndCallback?: (id: string) => void;
 }
 
 /**
@@ -29,7 +31,10 @@ interface KonvaNodeProps {
  * - onTransformEnd normalises Konva's scaleX/scaleY back into real width/height
  * - onClick/onTap stop propagation so Stage deselect doesn't fire
  */
-export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect, onChange, onDblClick, editingTextId, activeTool }) => {
+export const KonvaNode: React.FC<KonvaNodeProps> = ({ 
+  node, draggable, onSelect, onChange, onDblClick, 
+  editingTextId, activeTool, onDragMove, onDragEndCallback 
+}) => {
   const { className, attrs, children } = node;
 
   // Map className to React-Konva component
@@ -43,9 +48,21 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
   // Layers should NEVER be draggable themselves — only their children
   const isLayer = className === 'Layer';
 
+  const handleDragMove = (e: any) => {
+    e.cancelBubble = true;
+    if (onDragMove && attrs?.id) {
+      onDragMove(attrs.id, e.target);
+    }
+  };
+
   const handleDragEnd = (e: any) => {
     // Stop event propagation within Konva tree
     e.cancelBubble = true;
+    
+    if (onDragEndCallback && attrs?.id) {
+      onDragEndCallback(attrs.id);
+    }
+
     if (onChange && attrs?.id) {
       onChange(attrs.id, {
         x: e.target.x(),
@@ -147,6 +164,8 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
             onDblClick={onDblClick}
             editingTextId={editingTextId}
             activeTool={activeTool}
+            onDragMove={onDragMove}
+            onDragEndCallback={onDragEndCallback}
           />
         ))}
       </Component>
@@ -162,6 +181,7 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
       {...attrs}
       visible={!isEditingThis}
       draggable={draggable ?? false}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onClick={handleSelect}
       onTap={handleSelect}
@@ -178,6 +198,8 @@ export const KonvaNode: React.FC<KonvaNodeProps> = ({ node, draggable, onSelect,
           onDblClick={onDblClick}
           editingTextId={editingTextId}
           activeTool={activeTool}
+          onDragMove={onDragMove}
+          onDragEndCallback={onDragEndCallback}
         />
       ))}
     </Component>
