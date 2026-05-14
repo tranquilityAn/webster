@@ -2,6 +2,7 @@ import React from 'react';
 import { LinePropertiesSection } from './LinePropertiesSection';
 import { ShapePropertiesSection } from './ShapePropertiesSection';
 import { TextPropertiesSection } from './TextPropertiesSection';
+import { ImagePropertiesSection } from './ImagePropertiesSection';
 
 export interface PropertiesPanelProps {
   activeTool: string;
@@ -181,6 +182,30 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           dash={selectedNode.attrs?.dash || []}
           rotation={selectedNode.attrs?.rotation || 0}
           recentColors={recentColors}
+          onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
+        />
+      ) : selectedNode && selectedNode.className === 'Image' ? (
+        <ImagePropertiesSection
+          attrs={{
+            x:            selectedNode.attrs?.x ?? 0,
+            y:            selectedNode.attrs?.y ?? 0,
+            width:        selectedNode.attrs?.width ?? 0,
+            height:       selectedNode.attrs?.height ?? 0,
+            rotation:     selectedNode.attrs?.rotation ?? 0,
+            opacity:      selectedNode.attrs?.opacity ?? 1,
+            brightness:   selectedNode.attrs?.brightness ?? 0,
+            contrast:     selectedNode.attrs?.contrast ?? 0,
+            saturation:   selectedNode.attrs?.saturation ?? 0,
+            hue:          selectedNode.attrs?.hue ?? 0,
+            luminance:    selectedNode.attrs?.luminance ?? 0,
+            blurRadius:   selectedNode.attrs?.blurRadius ?? 0,
+            shadowColor:  selectedNode.attrs?.shadowColor ?? '#000000',
+            shadowBlur:   selectedNode.attrs?.shadowBlur ?? 0,
+            shadowOffsetX: selectedNode.attrs?.shadowOffsetX ?? 0,
+            shadowOffsetY: selectedNode.attrs?.shadowOffsetY ?? 0,
+            shadowOpacity: selectedNode.attrs?.shadowOpacity ?? 1,
+            filters:      selectedNode.attrs?.filters ?? [],
+          }}
           onChange={(updates) => handleNodeChange(selectedNode.attrs.id, updates)}
         />
       ) : selectedNode && ['Rect', 'Circle', 'RegularPolygon', 'Star', 'Arrow'].includes(selectedNode.className) ? (

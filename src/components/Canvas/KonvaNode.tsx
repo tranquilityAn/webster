@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import * as ReactKonva from 'react-konva';
+import Konva from 'konva';
 
 // ── KonvaImageNode ─────────────────────────────────────────────────────────
 // react-konva Image requires an HTMLImageElement, not a URL string.
@@ -27,7 +28,6 @@ const KonvaImageNode: React.FC<KonvaImageNodeProps> = ({
     img.onload = () => setHtmlImage(img);
     img.onerror = () => {
       // Fallback: if CORS fails (common with direct S3 urls), load without crossOrigin.
-      // The canvas will be tainted but at least the image displays perfectly on screen.
       const fallbackImg = new window.Image();
       fallbackImg.onload = () => setHtmlImage(fallbackImg);
       fallbackImg.onerror = () => setHtmlImage(null);
@@ -68,6 +68,75 @@ const KonvaImageNode: React.FC<KonvaImageNodeProps> = ({
     onChange(attrs.id, { x: node.x(), y: node.y(), width: w, height: h, scaleX: 1, scaleY: 1, rotation: node.rotation() });
   };
 
+  // ── CSS Filter Generator ────────────────────────────────────────────────────
+  // Bypasses raw pixel extraction SecurityErrors (CORS) completely!
+  const cssFilterString = React.useMemo(() => {
+    const parts: string[] = [];
+
+    // Map filters presets
+    if (attrs?.filters?.includes('Grayscale')) parts.push('grayscale(100%)');
+
+    // 1. Brightness (Konva: -1..1 → CSS: 0..2)
+    if (attrs?.brightness !== undefined && attrs.brightness !== 0) {
+      parts.push(`brightness(${1 + attrs.brightness})`);
+    }
+
+    // 2. Contrast (Konva: -100..100 → CSS: 0%..200%)
+    if (attrs?.contrast !== undefined && attrs.contrast !== 0) {
+      parts.push(`contrast(${100 + attrs.contrast}%)`);
+    }
+
+    // 3. Saturation (Konva: -2..10 → CSS saturate: mapping)
+    // Mapping: Konva -1 -> 0%, 0 -> 100%, 1 -> 200%
+    if (attrs?.saturation !== undefined && attrs.saturation !== 0) {
+      const pct = Math.max(0, (attrs.saturation + 1) * 100);
+      parts.push(`saturate(${Math.round(pct)}%)`);
+    }
+
+    // 4. Hue (Konva: 0..259 → CSS hue-rotate)
+    if (attrs?.hue !== undefined && attrs.hue !== 0) {
+      parts.push(`hue-rotate(${attrs.hue}deg)`);
+    }
+
+    // 5. Blur (Konva: 0..40 → CSS blur)
+    if (attrs?.blurRadius !== undefined && attrs.blurRadius > 0) {
+      parts.push(`blur(${attrs.blurRadius}px)`);
+    }
+
+    return parts.length > 0 ? parts.join(' ') : 'none';
+  }, [
+    attrs?.filters,
+    attrs?.brightness,
+    attrs?.contrast,
+    attrs?.saturation,
+    attrs?.hue,
+    attrs?.blurRadius
+  ]);
+
+  // ── Standard Custom Scene Painter ───────────────────────────────────────────
+  // Configures the standard context2d rendering before drawing pixel data
+  const handleSceneFunc = React.useCallback((context: any, shape: any) => {
+    const ctx = context._context;
+    ctx.save();
+
+    // Apply standard context filters (immune to CORS tainted pixel checks!)
+    if (cssFilterString !== 'none') {
+      ctx.filter = cssFilterString;
+    }
+
+    const w = shape.width();
+    const h = shape.height();
+
+    // Render native bitmap
+    context.drawImage(htmlImage, 0, 0, w, h);
+
+    // Revert state to prevent leakage
+    ctx.restore();
+
+    // Allow Konva to overlay native hit detection borders/strokes/fills
+    context.fillStrokeShape(shape);
+  }, [htmlImage, cssFilterString]);
+
   if (!htmlImage) {
     // Placeholder rectangle while image loads
     return (
@@ -90,10 +159,13 @@ const KonvaImageNode: React.FC<KonvaImageNodeProps> = ({
     );
   }
 
+  // We override sceneFunc to apply GPU-accelerated Canvas Filters
+  // This supports shadows, strokes, and transformations exactly like standard Image!
   return (
     <ReactKonva.Image
       {...attrs}
       image={htmlImage}
+      sceneFunc={handleSceneFunc}
       draggable={draggable ?? false}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
