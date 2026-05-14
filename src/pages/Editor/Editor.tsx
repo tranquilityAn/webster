@@ -17,6 +17,7 @@ import { ShareModal } from './components/ShareModal';
 import { SaveTemplateModal } from './components/SaveTemplateModal';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { InlineTextEditor } from './components/InlineTextEditor';
+import { ImagePanel } from './components/ImagePanel';
 
 // Hooks
 import { useEditorNavigation } from './hooks/useEditorNavigation';
@@ -47,6 +48,7 @@ export default function Editor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeShape, setActiveShape] = useState<ShapeType>('ellipse');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showImagePanel, setShowImagePanel] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
 
   // Template modal state
@@ -485,15 +487,101 @@ export default function Editor() {
           activeTool={activeTool}
           activeShape={activeShape}
           onToolSelect={(toolId) => {
+            if (toolId === 'image') {
+              // Toggle panel when clicking the same tool, open when switching to it
+              setShowImagePanel((prev) => activeTool === 'image' ? !prev : true);
+            } else {
+              setShowImagePanel(false);
+            }
             setActiveTool(toolId);
             setSelectedId(null);
           }}
           onShapeSelect={(shape) => {
             setActiveShape(shape);
             setActiveTool('shapes');
+            setShowImagePanel(false);
             setSelectedId(null);
           }}
         />
+
+        {showImagePanel && (
+          <ImagePanel
+            onAddImage={(url, name) => {
+              const allNodes = computedState?.children?.flatMap((c: any) => c.children || []) || [];
+              const imgNodes = allNodes.filter((n: any) => n.className === 'Image');
+              const imgName = `${name || 'Image'} ${imgNodes.length + 1}`;
+              const newId = `image-${Date.now()}`;
+
+              // Place in the centre of the visible canvas
+              const stageW = computedState?.attrs?.width || 1280;
+              const stageH = computedState?.attrs?.height || 720;
+
+              const img = new window.Image();
+              img.crossOrigin = 'anonymous';
+              
+              const handleSuccess = (loadedImg: HTMLImageElement) => {
+                const maxW = Math.min(stageW * 0.5, loadedImg.naturalWidth);
+                const scale = maxW / (loadedImg.naturalWidth || maxW);
+                const w = Math.round(loadedImg.naturalWidth * scale);
+                const h = Math.round(loadedImg.naturalHeight * scale);
+                sendCommit([{
+                  op: 'add',
+                  parentId: 'layer-1',
+                  node: {
+                    className: 'Image',
+                    attrs: {
+                      id: newId,
+                      name: imgName,
+                      src: url,
+                      x: Math.round((stageW - w) / 2),
+                      y: Math.round((stageH - h) / 2),
+                      width: w,
+                      height: h,
+                      draggable: true,
+                    },
+                  },
+                }]);
+                setTimeout(() => {
+                  setActiveTool('select');
+                  setSelectedId(newId);
+                }, 50);
+              };
+
+              img.onload = () => handleSuccess(img);
+              img.onerror = () => {
+                // Fallback: Try loading WITHOUT crossOrigin if CORS blocked it, to get proper natural dimensions.
+                const fallbackImg = new window.Image();
+                fallbackImg.onload = () => handleSuccess(fallbackImg);
+                fallbackImg.onerror = () => {
+                  // Absolute fallback: add with default static sizes if image failed completely
+                  sendCommit([{
+                    op: 'add',
+                    parentId: 'layer-1',
+                    node: {
+                      className: 'Image',
+                      attrs: {
+                        id: newId,
+                        name: imgName,
+                        src: url,
+                        x: Math.round(stageW * 0.25),
+                        y: Math.round(stageH * 0.25),
+                        width: Math.round(stageW * 0.5),
+                        height: Math.round(stageH * 0.3),
+                        draggable: true,
+                      },
+                    },
+                  }]);
+                  setTimeout(() => {
+                    setActiveTool('select');
+                    setSelectedId(newId);
+                  }, 50);
+                };
+                fallbackImg.src = url;
+              };
+              img.src = url;
+            }}
+          />
+        )}
 
         <main className="editor-canvas-area" ref={canvasAreaRef} style={{ position: 'relative' }}>
           {error && <div className="editor-error-bar">{error}</div>}

@@ -1,0 +1,372 @@
+/* ============================================
+   IMAGE PANEL — Side panel for image browsing
+   Follows the Editor dark glassmorphism theme
+   ============================================ */
+
+.img-panel {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(37, 37, 37, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid #333333;
+  overflow: hidden;
+  animation: img-panel-slide-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 50;
+}
+
+@keyframes img-panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.img-panel-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid #333333;
+  flex-shrink: 0;
+}
+
+.img-panel-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #EDE986;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────────── */
+.img-panel-tabs {
+  display: flex;
+  padding: 8px 10px 0;
+  gap: 4px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.img-panel-tab {
+  flex: 1;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  letter-spacing: 0.02em;
+  margin-bottom: -1px;
+}
+
+.img-panel-tab:hover {
+  color: #A0A0A0;
+}
+
+.img-panel-tab.active {
+  color: #EDE986;
+  border-bottom-color: #EDE986;
+}
+
+/* ── Body & Tabpanels ────────────────────────────────────────────────────────── */
+.img-panel-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.img-panel-tabpanel {
+  display: none;
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.img-panel-tabpanel.active {
+  display: flex;
+}
+
+.img-panel-tabpanel::-webkit-scrollbar { width: 4px; }
+.img-panel-tabpanel::-webkit-scrollbar-track { background: transparent; }
+.img-panel-tabpanel::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+
+/* ── Image Grid ──────────────────────────────────────────────────────────────── */
+.img-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* ── Image Tile ──────────────────────────────────────────────────────────────── */
+.img-panel-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #1e1e1e;
+  border: 1.5px solid #2e2e2e;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.img-panel-tile:hover,
+.img-panel-tile:focus-visible {
+  border-color: rgba(237, 233, 134, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(237, 233, 134, 0.12);
+}
+
+.img-panel-tile:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.img-panel-tile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.img-panel-tile-img.loaded {
+  opacity: 1;
+}
+
+/* Label overlay on hover */
+.img-panel-tile-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%);
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: flex-end;
+  padding: 6px 7px;
+  pointer-events: none;
+}
+
+.img-panel-tile:hover .img-panel-tile-overlay,
+.img-panel-tile:focus-visible .img-panel-tile-overlay {
+  opacity: 1;
+}
+
+.img-panel-tile-label {
+  font-size: 10px;
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Error state inside tile */
+.img-panel-tile-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}
+
+/* ── Skeleton Loader ─────────────────────────────────────────────────────────── */
+.img-panel-skeleton {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background: #1e1e1e;
+  overflow: hidden;
+  position: relative;
+}
+
+.img-panel-skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.04) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Upload Zone ─────────────────────────────────────────────────────────────── */
+.img-panel-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 12px;
+  border: 1.5px dashed #333;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.015);
+  transition: border-color 0.2s, background 0.2s;
+  flex-shrink: 0;
+  outline: none;
+  min-height: 110px;
+}
+
+.img-panel-upload-zone:hover,
+.img-panel-upload-zone:focus-visible {
+  border-color: rgba(237, 233, 134, 0.45);
+  background: rgba(237, 233, 134, 0.04);
+}
+
+.img-panel-upload-zone.uploading {
+  cursor: not-allowed;
+  pointer-events: none;
+  border-color: rgba(237, 233, 134, 0.2);
+}
+
+.img-panel-upload-icon {
+  color: #555;
+  transition: color 0.2s;
+}
+
+.img-panel-upload-zone:hover .img-panel-upload-icon,
+.img-panel-upload-zone:focus-visible .img-panel-upload-icon {
+  color: #EDE986;
+}
+
+.img-panel-upload-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+  margin: 0;
+  text-align: center;
+}
+
+.img-panel-upload-hint {
+  font-size: 10px;
+  color: #555;
+  margin: 0;
+  text-align: center;
+}
+
+.img-panel-upload-error {
+  font-size: 11px;
+  color: #e74c3c;
+  margin: 4px 0 0;
+  text-align: center;
+}
+
+/* Upload spinner */
+.img-panel-upload-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #EDE986;
+  font-size: 12px;
+}
+
+.img-panel-spinner-ring {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid rgba(237, 233, 134, 0.2);
+  border-top-color: #EDE986;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────────────── */
+.img-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 12px;
+  color: #555;
+  text-align: center;
+}
+
+.img-panel-empty p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.img-panel-empty-hint {
+  font-size: 11px !important;
+  color: #444 !important;
+  font-weight: 400 !important;
+}
+
+/* ── Delete button inside tile ──────────────────────────────────────────────── */
+.img-panel-tile-delete-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(37, 37, 37, 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  padding: 0;
+  outline: none;
+}
+
+.img-panel-tile:hover .img-panel-tile-delete-btn,
+.img-panel-tile:focus-within .img-panel-tile-delete-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.img-panel-tile-delete-btn:hover,
+.img-panel-tile-delete-btn:focus-visible {
+  background: rgba(231, 76, 60, 0.2);
+  border-color: #e74c3c;
+  color: #ff5c5c;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.25);
+}
+
+.img-panel-tile-delete-btn:active {
+  transform: scale(0.92);
+}
+
+.img-panel-tile-delete-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
